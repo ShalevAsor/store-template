@@ -2,11 +2,11 @@ import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import React from "react";
 
-interface LayoutProps {
+export default function MainLayout({
+  children,
+}: {
   children: React.ReactNode;
-}
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+}) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
@@ -14,6 +14,4 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Footer />
     </div>
   );
-};
-
-export default Layout;
+}
