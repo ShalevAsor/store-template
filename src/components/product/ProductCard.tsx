@@ -16,12 +16,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const addItem = useCartStore((state) => state.addItem);
 
   const handleAddToCart = () => {
-    addItem({
+    const item = {
       id: product.id,
       name: product.name,
       price: product.price,
       image: product.image || undefined,
-    });
+    };
+
+    addItem(item);
   };
 
   return (
