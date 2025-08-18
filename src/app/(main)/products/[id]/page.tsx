@@ -42,6 +42,7 @@ export async function generateMetadata({
 
 export default async function ProductDetailPage({ params }: ProductPageProps) {
   const { id } = await params;
+
   const [product, relatedProducts] = await Promise.all([
     getProduct(id),
     getRelatedProducts(id, 3),
