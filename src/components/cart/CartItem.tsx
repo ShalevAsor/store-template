@@ -6,13 +6,14 @@ import Image from "next/image";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash } from "lucide-react";
+import { toast } from "sonner";
 
 interface CartItemProps {
   item: CartItem;
 }
 
 export const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
-  const { updateQuantity, removeItem } = useCartStore();
+  const { updateQuantity, removeItem, addItem } = useCartStore();
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity < 0) return;
@@ -21,6 +22,12 @@ export const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
 
   const handleRemove = () => {
     removeItem(item.id);
+    toast(`${item.name} removed from cart`, {
+      action: {
+        label: "Undo",
+        onClick: () => addItem(item),
+      },
+    });
   };
 
   return (

@@ -7,15 +7,65 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Basic models for your store
+// Existing Product model
 model Product {
   id          String   @id @default(cuid())
   name        String
   description String?
   price       Decimal  @db.Decimal(10, 2)
   image       String?
+  isDigital   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("products")
+}
+
+// New Order model
+model Order {
+  id              String      @id @default(cuid())
+  customerName    String
+  customerEmail   String
+  customerPhone   String?
+  shippingAddress String?     // Optional for digital products
+  paymentMethod   String      @default("card") // card, paypal, stripe, bank_transfer, wallet
+  isDigital       Boolean     @default(false) // Track if order contains only digital products
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  status          OrderStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  orderItems      OrderItem[]
+
+  @@map("orders")
+}
+
+// New OrderItem model
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String
+  productName String  // Store product name at time of order
+  price       Decimal @db.Decimal(10, 2) // Store price at time of order
+  quantity    Int
+  
+  // Relations
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  @@map("order_items")
+}
+
+// Order status enum - more comprehensive workflow
+enum OrderStatus {
+  PENDING     // Order created, payment pending
+  CONFIRMED   // Payment received/confirmed
+  PROCESSING  // Order being prepared
+  SHIPPED     // Physical products shipped
+  DELIVERED   // Physical products delivered
+  COMPLETED   // Digital products delivered OR physical delivered + confirmed
+  CANCELLED   // Order cancelled
+  REFUNDED    // Order refunded
+  
+  @@map("order_status")
 }

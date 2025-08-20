@@ -2,10 +2,12 @@
 
 import { useCartStore } from "@/store/cartStore";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export const CartSummary: React.FC = () => {
   const { getTotalItems, getTotalPrice, clearCart } = useCartStore();
-
+  const router = useRouter();
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
 
@@ -33,13 +35,23 @@ export const CartSummary: React.FC = () => {
 
       {/* Action Buttons */}
       <div className="mt-6 space-y-3">
-        <Button disabled={totalItems === 0} className="w-full" size="lg">
+        <Button
+          onClick={() => {
+            router.push("/checkout");
+          }}
+          disabled={totalItems === 0}
+          className="w-full"
+          size="lg"
+        >
           Proceed to Checkout
         </Button>
 
         {totalItems > 0 && (
           <Button
-            onClick={clearCart}
+            onClick={() => {
+              clearCart();
+              toast.success("Cart cleared!");
+            }}
             variant="ghost"
             className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
           >
