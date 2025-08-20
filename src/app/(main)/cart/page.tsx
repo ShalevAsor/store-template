@@ -5,12 +5,24 @@ import { CartItemComponent } from "@/components/cart/CartItem";
 import { CartSummary } from "@/components/cart/CartSummary";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useRouter } from "next/navigation";
+import { useHydration } from "@/hooks/use-hydration";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 
 export default function CartPage() {
   const { items } = useCartStore();
   const router = useRouter();
+  const hasHydrated = useHydration();
+  // Show loading while hydrating
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <LoadingSpinner size="lg" text="Loading..." />
+      </div>
+    );
+  }
 
-  if (items.length === 0) {
+  // Show empty state only after hydration confirms cart is empty
+  if (hasHydrated && items.length === 0) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
         <EmptyState variant="cart" onAction={() => router.push("/products")} />

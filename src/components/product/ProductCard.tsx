@@ -1,12 +1,9 @@
 "use client";
 
-import { Product } from "@prisma/client";
 import { useCartStore } from "@/store/cartStore";
 import Image from "next/image";
-
-type SerializedProduct = Omit<Product, "price"> & {
-  price: number;
-};
+import { SerializedProduct } from "@/lib/products";
+import { toast } from "sonner";
 
 interface ProductCardProps {
   product: SerializedProduct;
@@ -21,9 +18,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       name: product.name,
       price: product.price,
       image: product.image || undefined,
+      isDigital: product.isDigital,
     };
 
     addItem(item);
+    toast.success(`${product.name} added to cart!`);
   };
 
   return (
