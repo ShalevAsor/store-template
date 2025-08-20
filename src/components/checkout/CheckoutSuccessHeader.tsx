@@ -12,8 +12,9 @@ export const CheckoutSuccessHeader: React.FC = () => {
         Order Confirmed!
       </h1>
       <p className="text-gray-600">
-        Thank you for your order. We've received your payment and will process
-        your order shortly.
+        {
+          "Thank you for your order. We've received your payment and will process your order shortly."
+        }
       </p>
     </div>
   );

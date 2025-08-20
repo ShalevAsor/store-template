@@ -1,4 +1,3 @@
-import { EmptyState } from "@/components/shared/EmptyState";
 import Link from "next/link";
 
 export default function NotFound() {
@@ -11,7 +10,7 @@ export default function NotFound() {
             Page Not Found
           </h2>
           <p className="text-gray-500">
-            The page you're looking for doesn't exist or has been moved.
+            {"The page you're looking for doesn't exist or has been moved."}
           </p>
         </div>
 

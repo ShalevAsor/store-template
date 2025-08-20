@@ -9,7 +9,7 @@ export const NextSteps: React.FC<NextStepsProps> = ({ isDigital }) => {
   return (
     <Card className="mb-8">
       <CardHeader>
-        <CardTitle>What's Next?</CardTitle>
+        <CardTitle>{"What's Next?"}</CardTitle>
       </CardHeader>
       <CardContent>
         {isDigital ? (
@@ -32,8 +32,9 @@ export const NextSteps: React.FC<NextStepsProps> = ({ isDigital }) => {
               <div>
                 <h3 className="font-medium">Processing Your Order</h3>
                 <p className="text-sm text-gray-600">
-                  We're preparing your order for shipment. You'll receive a
-                  tracking number via email once your order ships.
+                  {
+                    "We're preparing your order for shipment. You'll receive a tracking number via email once your order ships."
+                  }
                 </p>
               </div>
             </div>

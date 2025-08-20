@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/product/ProductCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { getProducts } from "@/lib/products";

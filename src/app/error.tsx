@@ -17,7 +17,7 @@ export default function Error({
             Oops! Something went wrong
           </h1>
           <p className="text-gray-600">
-            We're sorry, but something unexpected happened.
+            {"We're sorry, but something unexpected happened."}
           </p>
         </div>
 
