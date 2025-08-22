@@ -1,24 +1,3 @@
-// import { z } from "zod";
-
-// // Checkout form validation schema - ONLY what user inputs
-// export const CheckoutFormSchema = z.object({
-//   customerName: z
-//     .string()
-//     .min(1, "Name is required")
-//     .max(100, "Name is too long"),
-//   customerEmail: z.string().email("Invalid email address").toLowerCase(),
-//   customerPhone: z.string().optional(),
-//   shippingAddress: z.string().optional(),
-//   paymentMethod: z.enum(
-//     ["card", "paypal", "stripe", "bank_transfer", "wallet"],
-//     {
-//       message: "Please select a valid payment method",
-//     }
-//   ),
-// });
-
-// // Export the form data type
-// export type CheckoutFormData = z.infer<typeof CheckoutFormSchema>;
 import { z } from "zod";
 
 // Base checkout form validation schema
