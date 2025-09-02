@@ -1,3 +1,4 @@
+//src / app / (main) / checkout / [success] / [orderid]
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { getOrder } from "@/lib/orders";

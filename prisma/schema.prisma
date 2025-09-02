@@ -11,17 +11,51 @@ datasource db {
 model Product {
   id          String   @id @default(cuid())
   name        String
-  description String?
   price       Decimal  @db.Decimal(10, 2)
-  image       String?
+  description String?
+  compareAtPrice Decimal?  @db.Decimal(10, 2) // original price for sale display
+  
+  // Inventory
+  stock       Int?    // null = unlimited, 0 = out of stock , number = available 
+  sku         String?   @unique // Buisness identifier
+  
+  // Product organization
+  category    String?  // Flat category system
+  slug        String    @unique 
+  status      ProductStatus @default(DRAFT)
+
+  // Product type 
   isDigital   Boolean  @default(false)
+
+  // Relations 
+  images      ProductImage[]
+
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("products")
 }
 
-// New Order model
+
+model ProductImage{
+  id       String @id @default(cuid())
+  productId String 
+  imageUrl  String 
+  altText String?
+  sortOrder Int   @default(0)
+  
+  // Relations 
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("product_images")
+}
+
+
+
+
 model Order {
   id              String      @id @default(cuid())
   customerName    String
@@ -68,4 +102,12 @@ enum OrderStatus {
   REFUNDED    // Order refunded
   
   @@map("order_status")
+}
+
+enum ProductStatus {
+  DRAFT     // Not visible to customers
+  ACTIVE    // Available for purchase
+  ARCHIVED  // Hidden but not deleted
+  
+  @@map("product_status")
 }

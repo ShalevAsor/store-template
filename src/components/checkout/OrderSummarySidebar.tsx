@@ -1,5 +1,6 @@
 import { CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { formatPrice, calculateTax } from "@/utils/priceUtils";
 
 interface OrderSummarySidebarProps {
   totalAmount: number;
@@ -10,6 +11,10 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
   totalAmount,
   isDigital,
 }) => {
+  // Use centralized tax calculation
+  const tax = calculateTax(totalAmount);
+  const total = totalAmount + tax;
+
   return (
     <div className="lg:col-span-1">
       <Card className="sticky top-8">
@@ -23,22 +28,22 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>${totalAmount.toFixed(2)}</span>
+              <span>{formatPrice(totalAmount)}</span>
             </div>
             {!isDigital && (
               <div className="flex justify-between">
                 <span>Shipping</span>
-                <span>Free</span>
+                <span className="text-green-600">Free</span>
               </div>
             )}
             <div className="flex justify-between">
               <span>Tax</span>
-              <span>$0.00</span>
+              <span>{formatPrice(tax)}</span>
             </div>
             <div className="border-t pt-3">
               <div className="flex justify-between font-semibold text-base">
                 <span>Total</span>
-                <span>${totalAmount.toFixed(2)}</span>
+                <span>{formatPrice(total)}</span>
               </div>
             </div>
           </div>

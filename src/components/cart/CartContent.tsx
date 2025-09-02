@@ -7,23 +7,15 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { useRouter } from "next/navigation";
 import { useHydration } from "@/hooks/use-hydration";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
-import { useProductStock } from "@/hooks/use-product-stock";
-import { useMemo } from "react";
 
-export default function CartPage() {
+interface CartContentProps {
+  productStockMap: Record<string, number | null>; // productId -> stock
+}
+
+export default function CartContent({ productStockMap }: CartContentProps) {
   const { items } = useCartStore();
   const router = useRouter();
   const hasHydrated = useHydration();
-
-  // Get product IDs for stock query
-  const productIds = useMemo(() => items.map((item) => item.id), [items]);
-
-  // Fetch stock data with React Query
-  const {
-    data: stockMap = {},
-    isLoading: isLoadingStock,
-    error: stockError,
-  } = useProductStock(productIds);
 
   // Show loading while hydrating
   if (!hasHydrated) {
@@ -43,12 +35,6 @@ export default function CartPage() {
     );
   }
 
-  // Handle stock fetch error (non-blocking)
-  if (stockError) {
-    console.error("Failed to fetch stock data:", stockError);
-    // Continue rendering - stock validation will be disabled but cart still works
-  }
-
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
@@ -56,14 +42,6 @@ export default function CartPage() {
         <p className="text-gray-600 mt-1">
           {items.length} {items.length === 1 ? "item" : "items"} in your cart
         </p>
-
-        {/* Optional: Show subtle loading indicator in corner for stock validation */}
-        {isLoadingStock && (
-          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-            <div className="w-3 h-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-            <span>Validating availability...</span>
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -74,7 +52,7 @@ export default function CartPage() {
               <CartItemComponent
                 key={item.id}
                 item={item}
-                productStock={stockMap[item.id] ?? null}
+                productStock={productStockMap[item.id] || null}
               />
             ))}
           </div>

@@ -6,7 +6,12 @@ import {
 } from "@/schemas/checkoutSchema";
 import { createOrder, CreateOrderData } from "@/lib/orders";
 import { CartItem } from "@/types/cart";
-import { isDigitalOrder } from "@/utils/orderUtils";
+import {
+  isDigitalOrder,
+  validateCartItems,
+  validateCartStock,
+} from "@/utils/orderUtils";
+import { getErrorMessage } from "@/utils/errorUtils";
 
 // Server action return type
 export interface CheckoutResult {
@@ -14,23 +19,6 @@ export interface CheckoutResult {
   error?: string;
   fieldErrors?: Record<string, string[]>;
   orderId?: string;
-}
-
-/**
- * Validate cart items
- */
-function validateCartItems(cartItems: CartItem[]): string | null {
-  if (!cartItems || cartItems.length === 0) {
-    return "Cart is empty";
-  }
-
-  for (const item of cartItems) {
-    if (!item.id || !item.name || item.price <= 0 || item.quantity <= 0) {
-      return "Invalid item in cart";
-    }
-  }
-
-  return null;
 }
 
 /**
@@ -42,9 +30,17 @@ export async function processCheckout(
 ): Promise<CheckoutResult> {
   try {
     // Validate cart items first
-    const cartError = validateCartItems(cartItems);
-    if (cartError) {
-      return { success: false, error: cartError };
+    const cartValidation = validateCartItems(cartItems);
+    if (!cartValidation.success) {
+      return { success: false, error: cartValidation.error };
+    }
+    // validate stock
+    const stockValidation = await validateCartStock(cartItems);
+    if (!stockValidation.success) {
+      return {
+        success: false,
+        error: stockValidation.message || "Stock validation failed",
+      };
     }
 
     // Determine if order is digital
@@ -75,24 +71,6 @@ export async function processCheckout(
     }
 
     const validatedForm = validationResult.data;
-
-    // Business logic validation
-    // Example: Check if email domain is allowed, verify payment method availability, etc.
-
-    // Example business rule: Block certain email domains
-    const blockedDomains = ["tempmail.com", "guerrillamail.com"];
-    const emailDomain = validatedForm.customerEmail
-      .split("@")[1]
-      ?.toLowerCase();
-    if (emailDomain && blockedDomains.includes(emailDomain)) {
-      return {
-        success: false,
-        error: "Please use a valid email address",
-        fieldErrors: {
-          customerEmail: ["This email domain is not allowed"],
-        },
-      };
-    }
 
     // Prepare order data
     const orderData: CreateOrderData = {
@@ -130,33 +108,15 @@ export async function processCheckout(
     };
   } catch (error) {
     console.error("Checkout error:", error);
-
-    // Handle specific error types
-    if (error instanceof Error) {
-      if (error.message.includes("redirect")) {
-        // This is a redirect, let it through
-        throw error;
-      }
-
-      // Handle database errors
-      if (
-        error.message.includes("Unique constraint") ||
-        error.message.includes("duplicate")
-      ) {
-        return {
-          success: false,
-          error:
-            "An order with this information already exists. Please try again.",
-        };
-      }
-
-      // Handle other known errors
-      return { success: false, error: error.message };
+    // Handle redirect errors (let them through)
+    if (error instanceof Error && error.message.includes("redirect")) {
+      throw error;
     }
 
+    // Use centralized error handling
     return {
       success: false,
-      error: "An unexpected error occurred. Please try again.",
+      error: getErrorMessage(error),
     };
   }
 }

@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { processCheckout, CheckoutResult } from "@/lib/actions/checkoutAction";
 import type { CheckoutFormData } from "@/schemas/checkoutSchema";
 import { useHydration } from "@/hooks/use-hydration";
+import { StockWarning } from "@/components/checkout/StockWarning";
 
 type PageState = "loading" | "ready" | "submitting";
 
@@ -109,6 +110,9 @@ export default function CheckoutPage() {
           Review your order and complete your purchase
         </p>
       </div>
+
+        <StockWarning />
+      
 
       {/* Checkout Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

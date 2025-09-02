@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatOrderDate, formatOrderId } from "@/utils/orderUtils";
+import { formatOrderDate, formatOrderId } from "@/utils/priceUtils";
+import { formatPrice, formatLineItemPrice } from "@/utils/priceUtils";
 import { MapPin, Package, User } from "lucide-react";
 import { SerializedOrder } from "@/lib/orders";
 
@@ -102,27 +103,29 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {order.orderItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
-              >
-                <div className="flex-1">
-                  <h3 className="font-medium">{item.productName}</h3>
-                  <p className="text-sm text-gray-500">
-                    Quantity: {item.quantity}
-                  </p>
+            {order.orderItems.map((item) => {
+              const itemPrice = formatLineItemPrice(item.price, item.quantity);
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-medium">{item.productName}</h3>
+                    <p className="text-sm text-gray-500">
+                      Quantity: {item.quantity}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">{itemPrice.lineTotal}</p>
+                    <p className="text-sm text-gray-500">
+                      {itemPrice.unitPrice} each
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    ${item.price.toFixed(2)} each
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

@@ -7,28 +7,88 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
+// Import centralized price utilities
+import {
+  formatPrice,
+  formatLineItemPrice,
+  getDetailedStockText,
+} from "@/utils/priceUtils";
 
 interface CartItemProps {
   item: CartItem;
+  productStock?: number | null;
 }
 
-export const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
+export const CartItemComponent: React.FC<CartItemProps> = ({
+  item,
+  productStock = null,
+}) => {
   const { updateQuantity, removeItem, addItem } = useCartStore();
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity < 0) return;
-    updateQuantity(item.id, newQuantity);
+
+    // For physical products, validate against stock
+    if (
+      !item.isDigital &&
+      productStock !== null &&
+      newQuantity > productStock
+    ) {
+      toast.error(`Only ${productStock} available in stock`);
+      return;
+    }
+
+    const result = updateQuantity(item.id, newQuantity, productStock);
+
+    if (!result.success) {
+      toast.error(result.message);
+    }
   };
 
   const handleRemove = () => {
+    // Store the item data before removing
+    const itemToRestore = { ...item };
+
     removeItem(item.id);
-    toast(`${item.name} removed from cart`, {
+    toast.success(`${item.name} removed from cart`, {
       action: {
         label: "Undo",
-        onClick: () => addItem(item),
+        onClick: () => {
+          // Actually re-add the item with proper stock validation
+          const result = addItem(
+            {
+              id: itemToRestore.id,
+              name: itemToRestore.name,
+              price: itemToRestore.price,
+              image: itemToRestore.image,
+              isDigital: itemToRestore.isDigital,
+            },
+            itemToRestore.quantity,
+            productStock
+          );
+
+          if (result.success) {
+            toast.success("Item restored to cart");
+          } else {
+            toast.error(result.message);
+          }
+        },
       },
     });
   };
+
+  // Calculate max quantity for this item
+  const getMaxQuantity = () => {
+    if (item.isDigital || productStock === null) return 999;
+    return productStock;
+  };
+
+  const maxQuantity = getMaxQuantity();
+  const isAtMaxQuantity = item.quantity >= maxQuantity;
+
+  // Use centralized price formatting
+  const lineItemPrice = formatLineItemPrice(item.price, item.quantity);
+  const stockText = getDetailedStockText(productStock, item.isDigital);
 
   return (
     <div className="flex items-center gap-4 p-4 bg-white rounded-lg border">
@@ -47,10 +107,21 @@ export const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
 
       {/* Product info */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-900 truncate">{item.name}</h3>
-        <p className="text-sm text-gray-500 mt-1">
-          ${item.price.toFixed(2)} each
-        </p>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-medium text-gray-900 truncate">{item.name}</h3>
+          {item.isDigital && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              Digital
+            </span>
+          )}
+        </div>
+        {/* Use centralized price formatting */}
+        <p className="text-sm text-gray-500">{lineItemPrice.unitPrice} each</p>
+
+        {/* Stock info using centralized text */}
+        {!item.isDigital && productStock !== null && (
+          <p className="text-xs text-gray-400 mt-1">{stockText}</p>
+        )}
       </div>
 
       {/* Quantity controls */}
@@ -73,17 +144,16 @@ export const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
           variant="outline"
           size="sm"
           onClick={() => handleQuantityChange(item.quantity + 1)}
+          disabled={isAtMaxQuantity}
           className="h-8 w-8 p-0"
         >
           <Plus className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* Item Total */}
+      {/* Item Total - Using centralized formatting */}
       <div className="text-right min-w-[80px]">
-        <p className="font-semibold text-gray-900">
-          ${(item.price * item.quantity).toFixed(2)}
-        </p>
+        <p className="font-semibold text-gray-900">{lineItemPrice.lineTotal}</p>
       </div>
 
       {/* Remove button */}

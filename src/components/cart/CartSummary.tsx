@@ -4,12 +4,16 @@ import { useCartStore } from "@/store/cartStore";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+// Import centralized price utilities
+import { calculateOrderTotals } from "@/utils/priceUtils";
 
 export const CartSummary: React.FC = () => {
-  const { getTotalItems, getTotalPrice, clearCart } = useCartStore();
+  const { items, getTotalItems, clearCart } = useCartStore();
   const router = useRouter();
   const totalItems = getTotalItems();
-  const totalPrice = getTotalPrice();
+
+  // Use centralized calculation instead of store method
+  const orderTotals = calculateOrderTotals(items);
 
   return (
     <div className="bg-white p-6 rounded-lg border">
@@ -18,18 +22,20 @@ export const CartSummary: React.FC = () => {
       </h2>
 
       <div className="space-y-3">
-        {/* Items Count */}
+        {/* Items Count - Using centralized formatting */}
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Items ({totalItems})</span>
-          <span className="text-gray-900">${totalPrice.toFixed(2)}</span>
+          <span className="text-gray-900">
+            {orderTotals.formatted.subtotal}
+          </span>
         </div>
 
         <hr className="my-3" />
 
-        {/* Total */}
+        {/* Total - Using centralized formatting */}
         <div className="flex justify-between text-lg font-semibold">
           <span>Total</span>
-          <span>${totalPrice.toFixed(2)}</span>
+          <span>{orderTotals.formatted.subtotal}</span>
         </div>
       </div>
 
