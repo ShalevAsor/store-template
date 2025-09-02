@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatOrderDate, formatOrderId } from "@/utils/priceUtils";
-import { formatPrice, formatLineItemPrice } from "@/utils/priceUtils";
+import { formatLineItemPrice } from "@/utils/priceUtils";
 import { MapPin, Package, User } from "lucide-react";
 import { SerializedOrder } from "@/lib/orders";
 

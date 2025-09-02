@@ -176,7 +176,7 @@ export const ProductsSearchFilter: React.FC<ProductsSearchFilterProps> = ({
 
             {search.trim() && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                Search: "{search.trim()}"
+                {`Search: "${search.trim()}"`}
               </span>
             )}
 

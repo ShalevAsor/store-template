@@ -1,6 +1,5 @@
 "use client";
 
-import { useCartStore } from "@/store/cartStore";
 import { SerializedProduct } from "@/types/product";
 import Image from "next/image";
 import Link from "next/link";

@@ -8,11 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
 // Import centralized price utilities
-import {
-  formatPrice,
-  formatLineItemPrice,
-  getDetailedStockText,
-} from "@/utils/priceUtils";
+import { formatLineItemPrice, getDetailedStockText } from "@/utils/priceUtils";
 
 interface CartItemProps {
   item: CartItem;

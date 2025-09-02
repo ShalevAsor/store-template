@@ -20,6 +20,7 @@ import { deleteProduct } from "@/lib/actions/productActions";
 import { SerializedProduct } from "@/types/product";
 import { formatPrice } from "@/utils/priceUtils";
 import { ImagePlaceholder } from "@/components/shared/ImagePlaceholder";
+import Image from "next/image";
 
 interface ProductsTableProps {
   products: SerializedProduct[];
@@ -32,7 +33,6 @@ type DialogState = {
 };
 
 export function ProductsTable({ products }: ProductsTableProps) {
-  const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<DialogState>({
     open: false,
@@ -147,7 +147,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
                       {firstImage ? (
-                        <img
+                        <Image
                           src={firstImage.imageUrl}
                           alt={firstImage.altText || product.name}
                           className="w-full h-full object-cover"

@@ -8,7 +8,6 @@ import {
   SerializedProduct,
 } from "@/types/product";
 import { generateUniqueSlug, serializeProduct } from "@/utils/productUtils";
-import { ActionResult } from "next/dist/server/app-render/types";
 import { getErrorMessage } from "@/utils/errorUtils";
 
 export interface ProductActionResult {

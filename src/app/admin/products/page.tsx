@@ -1,11 +1,9 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ProductsTable } from "@/components/admin/ProductsTable";
 import { ProductsSearchFilter } from "@/components/admin/ProductsSearchFilter";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { getProductsWithPagination } from "@/lib/products";
 import { Pagination } from "@/components/shared/Pagination";
 import { ProductSearchFilters, ProductStatusFilter } from "@/types/product";
