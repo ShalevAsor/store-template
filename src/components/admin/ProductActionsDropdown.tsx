@@ -15,12 +15,14 @@ import Link from "next/link";
 
 interface ProductActionsDropdownProps {
   productId: string;
+  productSlug: string;
   onDelete: () => void;
   isDeleting: boolean;
 }
 
 export const ProductActionsDropdown: React.FC<ProductActionsDropdownProps> = ({
   productId,
+  productSlug,
   onDelete,
   isDeleting,
 }) => {
@@ -36,7 +38,7 @@ export const ProductActionsDropdown: React.FC<ProductActionsDropdownProps> = ({
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
         <DropdownMenuItem asChild>
-          <Link href={`/products/${productId}`} target="_blank">
+          <Link href={`/products/${productSlug}`} target="_blank">
             <Eye className="mr-2 h-4 w-4" />
             View Product
           </Link>

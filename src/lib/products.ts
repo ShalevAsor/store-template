@@ -223,6 +223,112 @@ export async function getRelatedProducts(
  * Get products with pagination, search, and filtering for admin
  * Returns products of any status for admin management
  */
+// export async function getProductsWithPagination(
+//   page: number = 1,
+//   limit: number = 10,
+//   filters: ProductSearchFilters = {}
+// ): Promise<ProductsPaginationResult> {
+//   // Ensure valid pagination parameters
+//   const currentPage = Math.max(1, page);
+//   const take = Math.max(1, limit);
+//   const skip = (currentPage - 1) * take;
+
+//   try {
+//     // Build where clause based on filters
+//     const whereClause: Prisma.ProductWhereInput = {};
+
+//     // Search filter - searches in both name and description
+//     if (filters.search && filters.search.trim()) {
+//       const searchTerm = filters.search.trim();
+//       whereClause.OR = [
+//         {
+//           name: {
+//             contains: searchTerm,
+//             mode: "insensitive", // Case-insensitive search
+//           },
+//         },
+//         {
+//           description: {
+//             contains: searchTerm,
+//             mode: "insensitive",
+//           },
+//         },
+//       ];
+//     }
+
+//     // Product type filter
+//     if (filters.productType && filters.productType !== "all") {
+//       whereClause.isDigital = filters.productType === "digital";
+//     }
+
+//     // Status filter (admin can filter by status)
+//     if (filters.status) {
+//       whereClause.status = filters.status;
+//     }
+
+//     // Category filter
+//     if (filters.category && filters.category.trim()) {
+//       whereClause.category = {
+//         contains: filters.category.trim(),
+//         mode: "insensitive",
+//       };
+//     }
+
+//     // Get products and total count in parallel with filters applied
+//     const [products, total] = await Promise.all([
+//       prisma.product.findMany({
+//         where: whereClause,
+//         include: {
+//           images: {
+//             orderBy: { sortOrder: "asc" },
+//           },
+//         },
+//         orderBy: { createdAt: "desc" },
+//         skip,
+//         take,
+//       }),
+//       prisma.product.count({ where: whereClause }),
+//     ]);
+
+//     // Serialize products for client components
+//     const serializedProducts = products.map(serializeProduct);
+
+//     // Calculate pagination metadata
+//     const totalPages = Math.ceil(total / take);
+//     const hasNextPage = currentPage < totalPages;
+//     const hasPreviousPage = currentPage > 1;
+
+//     return {
+//       products: serializedProducts,
+//       pagination: {
+//         page: currentPage,
+//         limit: take,
+//         total,
+//         totalPages,
+//         hasNextPage,
+//         hasPreviousPage,
+//       },
+//     };
+//   } catch (error) {
+//     console.error("Error fetching products with pagination:", error);
+//     return {
+//       products: [],
+//       pagination: {
+//         page: 1,
+//         limit,
+//         total: 0,
+//         totalPages: 0,
+//         hasNextPage: false,
+//         hasPreviousPage: false,
+//       },
+//     };
+//   }
+// }
+
+/**
+ * Get products with pagination, search, and filtering for admin
+ * Returns products of any status for admin management
+ */
 export async function getProductsWithPagination(
   page: number = 1,
   limit: number = 10,
@@ -237,7 +343,7 @@ export async function getProductsWithPagination(
     // Build where clause based on filters
     const whereClause: Prisma.ProductWhereInput = {};
 
-    // Search filter - searches in both name and description
+    // Search filter - searches in name, description, AND sku
     if (filters.search && filters.search.trim()) {
       const searchTerm = filters.search.trim();
       whereClause.OR = [
@@ -253,6 +359,18 @@ export async function getProductsWithPagination(
             mode: "insensitive",
           },
         },
+        {
+          sku: {
+            contains: searchTerm,
+            mode: "insensitive",
+          },
+        },
+        {
+          category: {
+            contains: searchTerm,
+            mode: "insensitive",
+          },
+        },
       ];
     }
 
@@ -261,8 +379,8 @@ export async function getProductsWithPagination(
       whereClause.isDigital = filters.productType === "digital";
     }
 
-    // Status filter (admin can filter by status)
-    if (filters.status) {
+    // Status filter - Fixed to handle "all" value properly
+    if (filters.status && filters.status !== "all") {
       whereClause.status = filters.status;
     }
 

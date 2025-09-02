@@ -5,6 +5,8 @@ export type ProductWithImages = Product & {
   images: ProductImage[];
 };
 
+export type ProductStatusFilter = ProductStatus | "all";
+
 // Serialized type for client components (Decimal to number)
 export type SerializedProduct = Omit<
   ProductWithImages,
@@ -32,7 +34,7 @@ export type ProductsPaginationResult = {
 export interface ProductSearchFilters {
   search?: string; // Search in product name and description
   productType?: "all" | "digital" | "physical"; // Filter by product type
-  status?: ProductStatus; // Filter by product status (for admin)
+  status?: ProductStatusFilter; // Filter by product status (for admin)
   category?: string; // Filter by category
 }
 

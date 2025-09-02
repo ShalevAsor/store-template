@@ -6,11 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  getProductsWithPagination,
-  ProductSearchFilters,
-} from "@/lib/products";
+import { getProductsWithPagination } from "@/lib/products";
 import { Pagination } from "@/components/shared/Pagination";
+import { ProductSearchFilters, ProductStatusFilter } from "@/types/product";
 
 interface AdminProductsPageProps {
   searchParams: Promise<{
@@ -18,6 +16,7 @@ interface AdminProductsPageProps {
     limit?: string;
     search?: string;
     productType?: string;
+    status?: string;
   }>;
 }
 
@@ -36,6 +35,7 @@ export default async function ProductsPage({
     search: params.search || undefined,
     productType:
       (params.productType as "all" | "digital" | "physical") || undefined,
+    status: (params.status as ProductStatusFilter) || undefined,
   };
 
   // Fetch products with pagination and filters
@@ -47,15 +47,22 @@ export default async function ProductsPage({
 
   // Show empty state only when no products exist at all (no filters applied)
   const isFirstTimeEmpty =
-    products.length === 0 && !filters.search && !filters.productType;
+    products.length === 0 &&
+    !filters.search &&
+    !filters.productType &&
+    !filters.status;
 
   if (isFirstTimeEmpty) {
     return (
-      <EmptyState
-        description="Please add products first"
-        actionLabel="Add Product"
-        onAction={() => redirect("/admin/products/new")}
-      />
+      <div className="text-center py-12">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          No products found
+        </h3>
+        <p className="text-gray-600 mb-4">Please add products first</p>
+        <Button asChild>
+          <Link href="/admin/products/new">Add Product</Link>
+        </Button>
+      </div>
     );
   }
 
@@ -76,6 +83,7 @@ export default async function ProductsPage({
       <ProductsSearchFilter
         initialSearch={filters.search}
         initialProductType={filters.productType || "all"}
+        initialStatus={filters.status || "all"} // Add this line
       />
 
       {/* Products Table with Results */}
