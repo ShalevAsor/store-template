@@ -28,9 +28,7 @@ export default async function AdminLayout({
         </header>
 
         {/* Main content automatically fills remaining height */}
-        <main className="flex-1 flex flex-col overflow-auto p-4">
-          {children}
-        </main>
+        <main className="flex-1 flex flex-col p-4">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

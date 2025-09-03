@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { ProductFormData, productFormSchema } from "@/schemas/productSchema";
 import {
   ProductCreateData,
   ProductUpdateData,
@@ -9,37 +10,54 @@ import {
 } from "@/types/product";
 import { generateUniqueSlug, serializeProduct } from "@/utils/productUtils";
 import { getErrorMessage } from "@/utils/errorUtils";
+import { z } from "zod";
 
 export interface ProductActionResult {
   success: boolean;
   error?: string;
   data?: SerializedProduct;
+  fieldErrors?: Record<string, string[]>;
 }
 
 /**
- * Create a new product with auto-generated slug
+ * Create a new product with images and auto-generated slug
  */
-
 export async function createProduct(
-  data: ProductCreateData
+  data: ProductFormData
 ): Promise<ProductActionResult> {
   try {
-    const slug = await generateUniqueSlug(data.name);
+    // Validate form data
+    const validatedData = productFormSchema.parse(data);
+    const { images, ...productData } = validatedData;
 
+    // Generate unique slug
+    const slug = await generateUniqueSlug(validatedData.name);
+
+    // Create product with optional images
     const product = await prisma.product.create({
       data: {
-        ...data,
+        ...productData,
         slug,
+        compareAtPrice: validatedData.compareAtPrice ?? null,
+        stock: validatedData.stock ?? null,
+        sku: validatedData.sku || undefined,
+        images: images.length
+          ? {
+              createMany: {
+                data: images.map((img, index) => ({
+                  imageUrl: img.imageUrl,
+                  altText: img.altText ?? "",
+                  sortOrder: img.sortOrder ?? index,
+                })),
+              },
+            }
+          : undefined,
       },
-      include: {
-        images: {
-          orderBy: { sortOrder: "asc" },
-        },
-      },
+      include: { images: { orderBy: { sortOrder: "asc" } } },
     });
 
-    // Revalidate admin products page
-    revalidatePath("/admin/products");
+    // Revalidate relevant pages
+    revalidateProductPaths(product.slug);
 
     return {
       success: true,
@@ -47,6 +65,15 @@ export async function createProduct(
     };
   } catch (error) {
     console.error("Error creating product:", error);
+
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Invalid data provided",
+        fieldErrors: z.treeifyError(error),
+      };
+    }
+
     return {
       success: false,
       error: getErrorMessage(error),
@@ -60,32 +87,46 @@ export async function createProduct(
  */
 
 export async function updateProduct(
-  data: ProductUpdateData
+  id: string,
+  data: ProductFormData
 ): Promise<ProductActionResult> {
   try {
-    const { id, ...updateData } = data;
+    // ✅ Validate form data with zod
+    const validatedData = productFormSchema.parse(data);
+    const { images, ...updateData } = validatedData;
 
-    // Prepare update data
-    const finalUpdateData: Partial<ProductCreateData> & { slug?: string } = {
+    const finalUpdateData: Partial<ProductFormData> & { slug?: string } = {
       ...updateData,
     };
 
-    // If name is being updated, regenerate slug
+    //  Regenerate slug if name changed
     if (updateData.name) {
       finalUpdateData.slug = await generateUniqueSlug(updateData.name, id);
     }
 
+    //  Handle images (replace existing with new ones)
     const product = await prisma.product.update({
       where: { id },
-      data: finalUpdateData,
-      include: {
+      data: {
+        ...finalUpdateData,
+        compareAtPrice: validatedData.compareAtPrice ?? null,
+        stock: validatedData.stock ?? null,
+        sku: validatedData.sku || undefined,
         images: {
-          orderBy: { sortOrder: "asc" },
+          deleteMany: {}, // remove old images
+          createMany: {
+            data: images.map((img, index) => ({
+              imageUrl: img.imageUrl,
+              altText: img.altText ?? "",
+              sortOrder: img.sortOrder ?? index,
+            })),
+          },
         },
       },
+      include: { images: { orderBy: { sortOrder: "asc" } } },
     });
 
-    // Revalidate relevant pages
+    // Revalidate relevant paths
     revalidatePath("/admin/products");
     revalidatePath(`/products/${product.slug}`);
 
@@ -95,6 +136,14 @@ export async function updateProduct(
     };
   } catch (error) {
     console.error("Error updating product:", error);
+
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Invalid data provided",
+        fieldErrors: z.treeifyError(error),
+      };
+    }
 
     return {
       success: false,
@@ -111,16 +160,26 @@ export async function updateProduct(
 
 export async function deleteProduct(id: string): Promise<ProductActionResult> {
   try {
-    const product = await prisma.product.delete({ where: { id } });
+    // Delete the product and its images (cascade)
+    const product = await prisma.product.delete({
+      where: { id },
+    });
 
-    revalidatePath("/admin/products");
-    revalidatePath(`/products/${product.slug}`);
+    // Revalidate relevant pages
+    revalidateProductPaths(product.slug);
+
     return { success: true };
   } catch (error) {
-    console.error("Error in deleteProduct:", error);
+    console.error("Error deleting product:", error);
+
     return {
       success: false,
       error: getErrorMessage(error),
     };
   }
+}
+
+function revalidateProductPaths(slug?: string) {
+  revalidatePath("/admin/products");
+  if (slug) revalidatePath(`/products/${slug}`);
 }
