@@ -33,13 +33,6 @@ export function CartItems() {
 
   return (
     <div className="space-y-6">
-      {/* Items Count */}
-      {/* <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600">
-          {items.length} {items.length === 1 ? "item" : "items"} in your cart
-        </p>
-      </div> */}
-
       {/* Cart Items List */}
       <div className="space-y-4">
         {items.map((item) => (
