@@ -6,27 +6,104 @@ import {
 } from "@/schemas/checkoutSchema";
 import { createOrder, CreateOrderData } from "@/lib/orders";
 import { CartItem } from "@/types/cart";
-import {
-  isDigitalOrder,
-  validateCartItems,
-  validateCartStock,
-} from "@/utils/orderUtils";
+import { StockAdjustment } from "@/types/stock";
+import { isDigitalOrder, validateCartItems } from "@/utils/orderUtils";
 import { getErrorMessage } from "@/utils/errorUtils";
+import { calculateOrderTotals } from "@/utils/priceUtils";
+import { prisma } from "@/lib/prisma";
 
-// Server action return type
+// Updated server action return type
 export interface CheckoutResult {
   success: boolean;
   error?: string;
   fieldErrors?: Record<string, string[]>;
   orderId?: string;
+
+  // Stock validation fields
+  stockIssues?: StockAdjustment[];
+  adjustedTotal?: number;
+  needsConfirmation?: boolean;
 }
 
 /**
- * Main checkout server action - now receives validated form data
+ * Validate current stock levels for cart items
+ */
+async function validateCurrentStock(cartItems: CartItem[]): Promise<{
+  hasIssues: boolean;
+  adjustments: StockAdjustment[];
+  adjustedTotal: number;
+}> {
+  const adjustments: StockAdjustment[] = [];
+  const adjustedItems: CartItem[] = [];
+
+  for (const item of cartItems) {
+    // Get current stock from database
+    const product = await prisma.product.findUnique({
+      where: { id: item.id },
+      select: { stock: true, name: true },
+    });
+
+    if (!product) {
+      // Product not found - treat as removed
+      adjustments.push({
+        productId: item.id,
+        productName: item.name,
+        requestedQuantity: item.quantity,
+        availableQuantity: 0,
+        action: "removed",
+      });
+      continue;
+    }
+
+    // Check stock availability (applies to all products, digital or physical)
+    if (product.stock === null) {
+      // Unlimited stock - no adjustment needed
+      adjustedItems.push(item);
+    } else if (product.stock === 0) {
+      // Out of stock - remove item
+      adjustments.push({
+        productId: item.id,
+        productName: product.name,
+        requestedQuantity: item.quantity,
+        availableQuantity: 0,
+        action: "removed",
+      });
+    } else if (product.stock < item.quantity) {
+      // Insufficient stock - reduce quantity
+      adjustments.push({
+        productId: item.id,
+        productName: product.name,
+        requestedQuantity: item.quantity,
+        availableQuantity: product.stock,
+        action: "reduced",
+      });
+      adjustedItems.push({
+        ...item,
+        quantity: product.stock,
+      });
+    } else {
+      // Sufficient stock - no adjustment needed
+      adjustedItems.push(item);
+    }
+  }
+
+  // Calculate new total with adjusted items
+  const adjustedTotals = calculateOrderTotals(adjustedItems);
+
+  return {
+    hasIssues: adjustments.length > 0,
+    adjustments,
+    adjustedTotal: adjustedTotals.total,
+  };
+}
+
+/**
+ * Main checkout server action
  */
 export async function processCheckout(
   formData: CheckoutFormData,
-  cartItems: CartItem[]
+  cartItems: CartItem[],
+  options?: { confirmed?: boolean }
 ): Promise<CheckoutResult> {
   try {
     // Validate cart items first
@@ -34,25 +111,28 @@ export async function processCheckout(
     if (!cartValidation.success) {
       return { success: false, error: cartValidation.error };
     }
-    // validate stock
-    const stockValidation = await validateCartStock(cartItems);
-    if (!stockValidation.success) {
-      return {
-        success: false,
-        error: stockValidation.message || "Stock validation failed",
-      };
+
+    // Stock validation - skip if user already confirmed
+    if (!options?.confirmed) {
+      const stockValidation = await validateCurrentStock(cartItems);
+      if (stockValidation.hasIssues) {
+        return {
+          success: false,
+          stockIssues: stockValidation.adjustments,
+          adjustedTotal: stockValidation.adjustedTotal,
+          needsConfirmation: true,
+        };
+      }
     }
 
     // Determine if order is digital
     const orderIsDigital = isDigitalOrder(cartItems);
 
-    // Server-side validation as a safety net
-    // This ensures data integrity even if client validation is bypassed
+    // Server-side form validation
     const validationSchema = createCheckoutFormSchema(orderIsDigital);
     const validationResult = validationSchema.safeParse(formData);
 
     if (!validationResult.success) {
-      // Return validation errors if any (shouldn't happen with proper client validation)
       const fieldErrors: Record<string, string[]> = {};
 
       validationResult.error.issues.forEach((issue) => {
@@ -88,32 +168,36 @@ export async function processCheckout(
       })),
     };
 
-    // Create order in database
+    // Create order in database (this will do final stock validation with transaction)
+    console.log("Creating order with items:", orderData.items);
+
     const order = await createOrder(orderData);
 
-    // TODO: Here you would typically:
-    // 1. Process payment with chosen payment method
-    // 2. Send confirmation email
-    // 3. For digital products: generate download links
-    // 4. For physical products: create shipping label
-
+    // TODO: Process payment, send emails, etc.
     console.log(
       `Order ${order.id} created successfully for ${order.customerEmail}`
     );
 
-    // Return success with order ID (no redirect)
     return {
       success: true,
       orderId: order.id,
     };
   } catch (error) {
     console.error("Checkout error:", error);
-    // Handle redirect errors (let them through)
+
+    // Handle redirect errors
     if (error instanceof Error && error.message.includes("redirect")) {
       throw error;
     }
 
-    // Use centralized error handling
+    // Handle stock errors from createOrder
+    if (error instanceof Error && error.message.includes("stock")) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
     return {
       success: false,
       error: getErrorMessage(error),

@@ -4,16 +4,23 @@ import { useCartStore } from "@/store/cartStore";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-// Import centralized price utilities
+import { useHydration } from "@/hooks/use-hydration";
 import { calculateOrderTotals } from "@/utils/priceUtils";
 
 export const CartSummary: React.FC = () => {
   const { items, getTotalItems, clearCart } = useCartStore();
   const router = useRouter();
-  const totalItems = getTotalItems();
+  const hydrated = useHydration();
 
-  // Use centralized calculation instead of store method
-  const orderTotals = calculateOrderTotals(items);
+  // Use empty array until hydrated to prevent mismatch
+  const safeItems = hydrated ? items : [];
+  const totalItems = hydrated ? getTotalItems() : 0;
+  const orderTotals = calculateOrderTotals(safeItems);
+
+  // Don't render until hydrated to prevent mismatch
+  if (!hydrated) {
+    return null;
+  }
 
   return (
     <div className="bg-white p-6 rounded-lg border">

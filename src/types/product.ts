@@ -38,23 +38,6 @@ export interface ProductSearchFilters {
   category?: string; // Filter by category
 }
 
-// Product creation/update data
-export interface ProductCreateData {
-  name: string;
-  description?: string;
-  price: number;
-  compareAtPrice?: number;
-  stock?: number | null;
-  sku?: string;
-  category?: string;
-  status: ProductStatus;
-  isDigital: boolean;
-}
-
-export interface ProductUpdateData extends Partial<ProductCreateData> {
-  id: string;
-}
-
 export interface ValidationProductData {
   id: string;
   stock: number | null;

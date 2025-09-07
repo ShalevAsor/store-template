@@ -14,6 +14,7 @@ import { ImagePlaceholder } from "@/components/shared/ImagePlaceholder";
 import { cn } from "@/lib/utils";
 import type { ProductImage } from "@prisma/client";
 import { Button } from "../ui/button";
+import { getImageUrl } from "@/lib/images";
 
 interface ProductImageGalleryProps {
   images: ProductImage[];
@@ -93,11 +94,12 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
   // Single image - no carousel needed
   if (images.length === 1) {
+    const mainImage = getImageUrl(images[0].imageKey);
     return (
       <div className={cn("space-y-4", className)}>
         <div className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden">
           <Image
-            src={images[0].imageUrl}
+            src={mainImage}
             alt={images[0].altText || productName}
             fill
             className="object-cover"
@@ -125,7 +127,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
               <CarouselItem key={image.id}>
                 <div className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden">
                   <Image
-                    src={image.imageUrl}
+                    src={getImageUrl(image.imageKey)}
                     alt={image.altText || `${productName} - Image ${index + 1}`}
                     fill
                     className="object-cover"
@@ -161,7 +163,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
             )}
           >
             <Image
-              src={image.imageUrl}
+              src={getImageUrl(image.imageKey)}
               alt={image.altText || `${productName} thumbnail ${index + 1}`}
               fill
               className="object-cover"

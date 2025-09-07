@@ -36,28 +36,64 @@ export async function createOrder(
       0
     );
 
-    // Create order with order items in a transaction
-    const order = await prisma.order.create({
-      data: {
-        customerName: orderData.customerName,
-        customerEmail: orderData.customerEmail,
-        customerPhone: orderData.customerPhone,
-        shippingAddress: orderData.shippingAddress,
-        paymentMethod: orderData.paymentMethod,
-        isDigital: orderData.isDigital,
-        totalAmount,
-        orderItems: {
-          create: orderData.items.map((item) => ({
-            productId: item.productId,
-            productName: item.productName,
-            price: item.price,
-            quantity: item.quantity,
-          })),
+    // Create order with order items and update stock in a transaction
+    const order = await prisma.$transaction(async (tx) => {
+      // Validate and update stock for each item
+      for (const item of orderData.items) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { stock: true, name: true },
+        });
+
+        if (!product) {
+          throw new Error(`Product ${item.productName} not found`);
+        }
+
+        // Check stock availability (only for products with limited stock)
+        if (product.stock !== null) {
+          if (product.stock < item.quantity) {
+            throw new Error(
+              `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`
+            );
+          }
+
+          // Update stock - decrement by purchased quantity
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: {
+                decrement: item.quantity,
+              },
+            },
+          });
+        }
+      }
+
+      // Create the order
+      const createdOrder = await tx.order.create({
+        data: {
+          customerName: orderData.customerName,
+          customerEmail: orderData.customerEmail,
+          customerPhone: orderData.customerPhone,
+          shippingAddress: orderData.shippingAddress,
+          paymentMethod: orderData.paymentMethod,
+          isDigital: orderData.isDigital,
+          totalAmount,
+          orderItems: {
+            create: orderData.items.map((item) => ({
+              productId: item.productId,
+              productName: item.productName,
+              price: item.price,
+              quantity: item.quantity,
+            })),
+          },
         },
-      },
-      include: {
-        orderItems: true,
-      },
+        include: {
+          orderItems: true,
+        },
+      });
+
+      return createdOrder;
     });
 
     // Convert to serialized format
@@ -71,6 +107,12 @@ export async function createOrder(
     };
   } catch (error) {
     console.error("Error creating order:", error);
+
+    // Re-throw the error with more context
+    if (error instanceof Error) {
+      throw error; // Preserve the original error message
+    }
+
     throw new Error("Failed to create order");
   }
 }

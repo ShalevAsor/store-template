@@ -3,14 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ProductFormData, productFormSchema } from "@/schemas/productSchema";
-import {
-  ProductCreateData,
-  ProductUpdateData,
-  SerializedProduct,
-} from "@/types/product";
+import { SerializedProduct } from "@/types/product";
 import { generateUniqueSlug, serializeProduct } from "@/utils/productUtils";
 import { getErrorMessage } from "@/utils/errorUtils";
 import { z } from "zod";
+import { deleteImagesFromS3 } from "@/services/s3";
 
 export interface ProductActionResult {
   success: boolean;
@@ -45,7 +42,7 @@ export async function createProduct(
           ? {
               createMany: {
                 data: images.map((img, index) => ({
-                  imageUrl: img.imageUrl,
+                  imageKey: img.imageKey,
                   altText: img.altText ?? "",
                   sortOrder: img.sortOrder ?? index,
                 })),
@@ -65,6 +62,12 @@ export async function createProduct(
     };
   } catch (error) {
     console.error("Error creating product:", error);
+    // if we already upload images remove them from s3
+    const images = data.images;
+    if (images && images.length > 0) {
+      const imageKeys = images.map((img) => img.imageKey);
+      await deleteImagesFromS3(imageKeys);
+    }
 
     if (error instanceof z.ZodError) {
       return {
@@ -91,7 +94,7 @@ export async function updateProduct(
   data: ProductFormData
 ): Promise<ProductActionResult> {
   try {
-    // ✅ Validate form data with zod
+    // Validate form data with zod
     const validatedData = productFormSchema.parse(data);
     const { images, ...updateData } = validatedData;
 
@@ -99,12 +102,41 @@ export async function updateProduct(
       ...updateData,
     };
 
-    //  Regenerate slug if name changed
+    // Regenerate slug if name changed
     if (updateData.name) {
       finalUpdateData.slug = await generateUniqueSlug(updateData.name, id);
     }
 
-    //  Handle images (replace existing with new ones)
+    // Get existing images before deleting them
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+      include: { images: true },
+    });
+
+    if (!existingProduct) {
+      return {
+        success: false,
+        error: "Product not found",
+      };
+    }
+
+    // Get old and new image keys
+    const oldImageKeys = existingProduct.images.map((img) => img.imageKey);
+    const newImageKeys = images.map((img) => img.imageKey);
+
+    // Find images that are being removed (exist in old but not in new)
+    const imagesToDelete = oldImageKeys.filter(
+      (key) => !newImageKeys.includes(key)
+    );
+
+    // Normalize sort order for remaining images (0, 1, 2, etc.)
+    const normalizedImages = images.map((img, index) => ({
+      imageKey: img.imageKey,
+      altText: img.altText ?? "",
+      sortOrder: index, // Use array index for consistent ordering
+    }));
+
+    // Handle images (replace existing with new ones)
     const product = await prisma.product.update({
       where: { id },
       data: {
@@ -115,16 +147,17 @@ export async function updateProduct(
         images: {
           deleteMany: {}, // remove old images
           createMany: {
-            data: images.map((img, index) => ({
-              imageUrl: img.imageUrl,
-              altText: img.altText ?? "",
-              sortOrder: img.sortOrder ?? index,
-            })),
+            data: normalizedImages,
           },
         },
       },
       include: { images: { orderBy: { sortOrder: "asc" } } },
     });
+
+    // Only clean up images that were actually removed
+    if (imagesToDelete.length > 0) {
+      await deleteImagesFromS3(imagesToDelete);
+    }
 
     // Revalidate relevant paths
     revalidatePath("/admin/products");
@@ -136,6 +169,13 @@ export async function updateProduct(
     };
   } catch (error) {
     console.error("Error updating product:", error);
+
+    // If we already uploaded new images, remove them from s3
+    const images = data.images;
+    if (images && images.length > 0) {
+      const imageKeys = images.map((img) => img.imageKey);
+      await deleteImagesFromS3(imageKeys);
+    }
 
     if (error instanceof z.ZodError) {
       return {
@@ -151,7 +191,6 @@ export async function updateProduct(
     };
   }
 }
-
 /**
  * Delete product server action
  * @param id
@@ -160,10 +199,28 @@ export async function updateProduct(
 
 export async function deleteProduct(id: string): Promise<ProductActionResult> {
   try {
+    // Get product with images before deleting
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: { images: true },
+    });
+
+    if (!product) {
+      return { success: false, error: "Product not found" };
+    }
+
+    // Extract image keys before deletion
+    const imageKeys = product.images.map((img) => img.imageKey);
+
     // Delete the product and its images (cascade)
-    const product = await prisma.product.delete({
+    await prisma.product.delete({
       where: { id },
     });
+
+    // Clean up images from S3
+    if (imageKeys.length > 0) {
+      await deleteImagesFromS3(imageKeys);
+    }
 
     // Revalidate relevant pages
     revalidateProductPaths(product.slug);
@@ -171,7 +228,6 @@ export async function deleteProduct(id: string): Promise<ProductActionResult> {
     return { success: true };
   } catch (error) {
     console.error("Error deleting product:", error);
-
     return {
       success: false,
       error: getErrorMessage(error),

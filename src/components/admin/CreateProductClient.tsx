@@ -16,7 +16,7 @@ export function CreateProductClient() {
   const handleSubmit = async (
     data: ProductFormData,
     setError: UseFormSetError<ProductFormData>,
-    reset: UseFormReset<ProductFormData>
+    reset?: UseFormReset<ProductFormData>
   ) => {
     setIsSubmitting(true);
 
@@ -25,7 +25,7 @@ export function CreateProductClient() {
 
       if (result.success && result.data) {
         toast.success("Product created successfully!");
-        reset();
+        reset?.();
       } else {
         // Set server-side field errors
         if (result.fieldErrors) {

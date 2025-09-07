@@ -7,6 +7,7 @@ import { Badge } from "@/components/shared/Badge";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { ProductImageGallery } from "@/components/product/ProductImageGallery";
 import { formatPriceWithDiscount, getStockDisplay } from "@/utils/priceUtils";
+import { getImageUrl } from "@/lib/images";
 
 interface ProductPageProps {
   params: Promise<{
@@ -27,7 +28,7 @@ export async function generateMetadata({
     };
   }
 
-  const firstImage = product.images[0]?.imageUrl;
+  const mainImage = product.images[0]?.imageKey;
   // Use centralized price formatting for metadata
   const priceDisplay = formatPriceWithDiscount(
     product.price,
@@ -44,7 +45,7 @@ export async function generateMetadata({
       description:
         product.description ||
         `Buy ${product.name} for ${priceDisplay.currentPrice}`,
-      images: firstImage ? [{ url: firstImage }] : [],
+      images: mainImage ? [{ url: getImageUrl(mainImage) }] : [],
     },
   };
 }

@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "dhzo6p19lg68n.cloudfront.net", // your CF domain
+        pathname: "/**",
+      },
     ],
   },
 };

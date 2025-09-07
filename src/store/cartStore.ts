@@ -2,12 +2,6 @@ import { CartItem } from "@/types/cart";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-// Result type for cart operations
-export interface CartOperationResult {
-  success: boolean;
-  message: string;
-}
-
 // State type
 type CartState = {
   items: CartItem[];
@@ -15,16 +9,8 @@ type CartState = {
 
 // Actions type
 type CartActions = {
-  addItem: (
-    product: Omit<CartItem, "quantity">,
-    quantity?: number,
-    stock?: number | null
-  ) => CartOperationResult;
-  updateQuantity: (
-    id: string,
-    quantity: number,
-    stock?: number | null
-  ) => CartOperationResult;
+  addItem: (product: Omit<CartItem, "quantity">, quantity?: number) => void;
+  updateQuantity: (id: string, quantity: number) => void;
   removeItem: (id: string) => void;
   clearCart: () => void;
   getTotalItems: () => number;
@@ -38,36 +24,12 @@ export const useCartStore = create<CartState & CartActions>()(
       // Initial state
       items: [],
 
-      // Add item with stock validation
-      addItem: (product, quantity = 1, stock = null) => {
-        const state = get();
-        const existingItem = state.items.find((item) => item.id === product.id);
-        const currentQuantityInCart = existingItem ? existingItem.quantity : 0;
-        const requestedTotalQuantity = currentQuantityInCart + quantity;
-
-        // Stock validation for physical products (digital products have unlimited stock)
-        if (
-          !product.isDigital &&
-          stock !== null &&
-          requestedTotalQuantity > stock
-        ) {
-          const availableToAdd = Math.max(0, stock - currentQuantityInCart);
-
-          if (availableToAdd <= 0) {
-            return {
-              success: false,
-              message: "This item is out of stock",
-            };
-          }
-
-          return {
-            success: false,
-            message: `Only ${availableToAdd} more available (${currentQuantityInCart} already in cart)`,
-          };
-        }
-
-        // Update cart
+      // Add item action
+      addItem: (product, quantity = 1) => {
         set((state) => {
+          const existingItem = state.items.find(
+            (item) => item.id === product.id
+          );
           if (existingItem) {
             return {
               items: state.items.map((item) =>
@@ -77,66 +39,32 @@ export const useCartStore = create<CartState & CartActions>()(
               ),
             };
           }
-
+          // product is not in cart yet
           return {
             items: [...state.items, { ...product, quantity }],
           };
         });
-
-        return {
-          success: true,
-          message:
-            quantity === 1
-              ? `${product.name} added to cart`
-              : `${quantity} × ${product.name} added to cart`,
-        };
       },
 
-      // Update quantity with stock validation
-      updateQuantity: (id, quantity, stock = null) => {
-        const state = get();
-        const existingItem = state.items.find((item) => item.id === id);
-
-        if (!existingItem) {
+      // Update quantity action
+      updateQuantity: (id, quantity) => {
+        set((state) => {
+          if (quantity === 0) {
+            // Remove item from cart
+            return {
+              items: state.items.filter((item) => item.id !== id),
+            };
+          }
+          // Update quantity
           return {
-            success: false,
-            message: "Item not found in cart",
+            items: state.items.map((item) =>
+              item.id === id ? { ...item, quantity } : item
+            ),
           };
-        }
-
-        // If quantity is 0, remove item
-        if (quantity === 0) {
-          set((state) => ({
-            items: state.items.filter((item) => item.id !== id),
-          }));
-          return {
-            success: true,
-            message: "Item removed from cart",
-          };
-        }
-
-        // Stock validation for physical products
-        if (!existingItem.isDigital && stock !== null && quantity > stock) {
-          return {
-            success: false,
-            message: `Only ${stock} available in stock`,
-          };
-        }
-
-        // Update quantity
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, quantity } : item
-          ),
-        }));
-
-        return {
-          success: true,
-          message: "Quantity updated",
-        };
+        });
       },
 
-      // Remove item (no validation needed)
+      // Remove item
       removeItem: (id) => {
         set((state) => ({
           items: state.items.filter((item) => item.id !== id),

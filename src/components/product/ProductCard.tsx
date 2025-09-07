@@ -8,13 +8,14 @@ import { ImagePlaceholder } from "../shared/ImagePlaceholder";
 import { AddToCartButton } from "./AddToCartButton";
 // Import centralized price utilities
 import { formatPriceWithDiscount, getStockDisplay } from "@/utils/priceUtils";
+import { getImageUrl } from "@/lib/images";
 
 interface ProductCardProps {
   product: SerializedProduct;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const mainImage = product.images[0]?.imageUrl;
+  const mainImage = product.images[0]?.imageKey;
 
   // Use centralized price formatting
   const priceDisplay = formatPriceWithDiscount(
@@ -32,7 +33,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {mainImage ? (
           <div className="relative w-full h-48">
             <Image
-              src={mainImage}
+              src={getImageUrl(mainImage)}
               alt={product.images[0]?.altText || product.name}
               fill
               className="object-cover hover:scale-105 transition-transform duration-300"

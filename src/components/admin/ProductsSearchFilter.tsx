@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, X, Filter } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { FilterSelect } from "../shared/FilterSelect";
 import {
@@ -47,38 +47,37 @@ export const ProductsSearchFilter: React.FC<ProductsSearchFilterProps> = ({
   }, [searchParams]);
 
   // Create URL with current filters
-  const createFilterUrl = (
-    newSearch: string,
-    newProductType: string,
-    newStatus: string
-  ) => {
-    const params = new URLSearchParams(searchParams);
+  const createFilterUrl = useCallback(
+    (newSearch: string, newProductType: string, newStatus: string) => {
+      const params = new URLSearchParams(searchParams);
 
-    // Set search parameter
-    if (newSearch.trim()) {
-      params.set("search", newSearch.trim());
-    } else {
-      params.delete("search");
-    }
+      // Set search parameter
+      if (newSearch.trim()) {
+        params.set("search", newSearch.trim());
+      } else {
+        params.delete("search");
+      }
 
-    // Set product type parameter
-    if (newProductType && newProductType !== "all") {
-      params.set("productType", newProductType);
-    } else {
-      params.delete("productType");
-    }
+      // Set product type parameter
+      if (newProductType && newProductType !== "all") {
+        params.set("productType", newProductType);
+      } else {
+        params.delete("productType");
+      }
 
-    // Set status parameter
-    if (newStatus && newStatus !== "all") {
-      params.set("status", newStatus);
-    } else {
-      params.delete("status");
-    }
+      // Set status parameter
+      if (newStatus && newStatus !== "all") {
+        params.set("status", newStatus);
+      } else {
+        params.delete("status");
+      }
 
-    // Reset to page 1 when filters change
-    params.set("page", "1");
-    return `?${params.toString()}`;
-  };
+      // Reset to page 1 when filters change
+      params.set("page", "1");
+      return `?${params.toString()}`;
+    },
+    [searchParams]
+  );
 
   // Handle search changes via debounced value
   useEffect(() => {
@@ -86,7 +85,14 @@ export const ProductsSearchFilter: React.FC<ProductsSearchFilterProps> = ({
     if (debouncedSearch !== (searchParams.get("search") || "")) {
       router.push(createFilterUrl(debouncedSearch, productType, status));
     }
-  }, [debouncedSearch, productType, status, router, searchParams]);
+  }, [
+    debouncedSearch,
+    productType,
+    status,
+    router,
+    searchParams,
+    createFilterUrl,
+  ]);
 
   // Handle product type change immediately
   const handleProductTypeChange = (newProductType: string) => {

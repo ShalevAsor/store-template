@@ -4,10 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 import { SerializedProduct } from "@/types/product";
-import { useProductStock } from "@/hooks/use-product-stock";
 import { useCartStore } from "@/store/cartStore";
-import { Badge } from "@/components/shared/Badge";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { getImageUrl } from "@/lib/images";
+import { useHydration } from "@/hooks/use-hydration";
 
 interface AddToCartButtonProps {
   product: SerializedProduct;
@@ -24,86 +25,51 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Get stock data and cart methods
-  const { data: stockData, isLoading: isLoadingStock } = useProductStock([
-    product.id,
-  ]);
+  const hydrated = useHydration();
   const { addItem, getItemQuantity } = useCartStore();
 
-  // Calculate stock info
-  const stock = stockData?.[product.id] ?? null;
-  const currentInCart = getItemQuantity(product.id);
-  const availableToAdd =
-    product.isDigital || stock === null
-      ? Infinity
-      : Math.max(0, stock - currentInCart);
-  const isOutOfStock =
-    !product.isDigital && stock !== null && stock <= currentInCart;
-  const maxQuantity =
-    product.isDigital || stock === null
-      ? 999
-      : Math.max(0, stock - currentInCart);
+  // Get current cart quantity (only after hydration)
+  const currentInCart = hydrated ? getItemQuantity(product.id) : 0;
+
+  // Determine if product is truly out of stock (hard block)
+  const isOutOfStock = product.stock === 0;
 
   // For simple variant, always use quantity 1
   const finalQuantity = variant === "simple" ? 1 : quantity;
-  const canAddCurrentQuantity = availableToAdd >= finalQuantity;
 
-  const handleAddToCart = async () => {
-    // Don't allow adding while stock is loading
-    if (isLoadingStock) {
-      toast.error("Please wait, checking availability...");
-      return;
-    }
-
-    if (isOutOfStock) {
-      toast.error("This product is out of stock");
-      return;
-    }
-
-    if (!canAddCurrentQuantity) {
-      toast.error(`Only ${availableToAdd} more available`);
-      return;
-    }
-
+  const handleAddToCart = () => {
     setIsLoading(true);
 
-    try {
-      const result = addItem(
-        {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.images[0]?.imageUrl,
-          isDigital: product.isDigital,
-        },
-        finalQuantity,
-        stock
-      );
+    // Add to cart without validation - just add whatever user wants
+    addItem(
+      {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: getImageUrl(product.images[0]?.imageKey),
+        isDigital: product.isDigital,
+      },
+      finalQuantity
+    );
 
-      if (result.success) {
-        toast.success(result.message);
-        // Reset quantity to 1 after successful add (for detailed variant)
-        if (variant === "detailed") {
-          setQuantity(1);
-        }
-      } else {
-        toast.error(result.message);
-      }
-    } finally {
-      setIsLoading(false);
+    // Show success message
+    const message =
+      finalQuantity === 1
+        ? `${product.name} added to cart`
+        : `${finalQuantity} × ${product.name} added to cart`;
+
+    toast.success(message);
+
+    // Reset quantity to 1 after successful add (for detailed variant)
+    if (variant === "detailed") {
+      setQuantity(1);
     }
+
+    setIsLoading(false);
   };
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity < 1) return;
-
-    if (newQuantity > maxQuantity) {
-      setQuantity(maxQuantity);
-      toast.warning(`Only ${maxQuantity} available`);
-      return;
-    }
-
     setQuantity(newQuantity);
   };
 
@@ -111,7 +77,6 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   const getButtonText = () => {
     if (isLoading) return "Adding...";
     if (isOutOfStock) return "Out of Stock";
-    if (availableToAdd === 0) return "Already in Cart";
 
     if (variant === "simple") {
       return "Add to Cart";
@@ -120,8 +85,8 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
     return `Add to Cart - $${(product.price * finalQuantity).toFixed(2)}`;
   };
 
-  const isDisabled =
-    isLoading || isLoadingStock || isOutOfStock || availableToAdd === 0;
+  // Only disable for truly out of stock items or while loading
+  const isDisabled = isLoading || isOutOfStock;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -129,10 +94,10 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
       {variant === "detailed" && !product.isDigital && (
         <div className="text-sm">
           {product.stock === null ? (
-            <Badge type="stock">In Stock</Badge>
+            <Badge variant="secondary">In Stock</Badge>
           ) : product.stock > 0 ? (
             <div className="space-y-1">
-              <Badge type="stock">{product.stock} available</Badge>
+              <Badge variant="secondary">{product.stock} available</Badge>
               {currentInCart > 0 && (
                 <span className="text-gray-500 block">
                   ({currentInCart} already in cart)
@@ -145,7 +110,7 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
         </div>
       )}
 
-      {/* Quantity Selector - for detailed variant only */}
+      {/* Quantity Selector - for detailed variant only, hide if out of stock */}
       {variant === "detailed" && !isOutOfStock && (
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">Quantity:</span>
@@ -168,26 +133,19 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
               variant="outline"
               size="sm"
               onClick={() => handleQuantityChange(quantity + 1)}
-              disabled={isDisabled || quantity >= maxQuantity}
+              disabled={isDisabled}
               className="h-8 w-8 p-0"
             >
               <Plus className="w-4 h-4" />
             </Button>
           </div>
-
-          {/* Quantity validation message */}
-          {!canAddCurrentQuantity && availableToAdd > 0 && (
-            <span className="text-amber-600 text-sm">
-              Only {availableToAdd} available
-            </span>
-          )}
         </div>
       )}
 
       {/* Add to Cart Button */}
       <Button
         onClick={handleAddToCart}
-        disabled={isDisabled || !canAddCurrentQuantity}
+        disabled={isDisabled}
         className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
         size={buttonSize}
       >
