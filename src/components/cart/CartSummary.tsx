@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useHydration } from "@/hooks/use-hydration";
-import { calculateOrderTotals } from "@/utils/priceUtils";
+import { calculateOrderTotals } from "@/utils/orderUtils";
 
 export const CartSummary: React.FC = () => {
   const { items, getTotalItems, clearCart } = useCartStore();

@@ -1,13 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatOrderDate, formatOrderId } from "@/utils/priceUtils";
 import { formatLineItemPrice } from "@/utils/priceUtils";
 import { MapPin, Package, User } from "lucide-react";
-import { SerializedOrder } from "@/lib/orders";
+import { SerializedOrder } from "@/types/order";
+import { formatDate } from "@/utils/time";
 
 interface OrderDetailsProps {
   order: SerializedOrder;
 }
-
+// TODO: replace format order id with order number from order
 export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
   return (
     <div className="lg:col-span-2 space-y-6">
@@ -23,11 +23,11 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-500">Order Number</p>
-              <p className="font-medium">{formatOrderId(order.id)}</p>
+              <p className="font-medium">{order.orderNumber}</p>
             </div>
             <div>
               <p className="text-gray-500">Order Date</p>
-              <p className="font-medium">{formatOrderDate(order.createdAt)}</p>
+              <p className="font-medium">{formatDate(order.createdAt)}</p>
             </div>
             <div>
               <p className="text-gray-500">Status</p>

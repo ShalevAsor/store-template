@@ -1,4 +1,5 @@
 import { Product, ProductImage, ProductStatus } from "@prisma/client";
+import { PaginationMeta } from "./common";
 // Product with image relation
 
 export type ProductWithImages = Product & {
@@ -20,14 +21,7 @@ export type SerializedProduct = Omit<
 // Pagination result type
 export type ProductsPaginationResult = {
   products: SerializedProduct[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
+  pagination: PaginationMeta;
 };
 
 // Search filters interface

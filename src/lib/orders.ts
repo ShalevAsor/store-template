@@ -1,27 +1,18 @@
 import { prisma } from "@/lib/prisma";
-import { Order, OrderItem, OrderStatus } from "@prisma/client";
-import type { CheckoutFormData } from "@/schemas/checkoutSchema";
-
-// Types for order creation - extend form data with order-specific fields
-export interface CreateOrderData extends CheckoutFormData {
-  isDigital: boolean; // Calculated from cart items
-  items: Array<{
-    productId: string;
-    productName: string;
-    price: number;
-    quantity: number;
-  }>;
-}
-
-// Serialized types for client components
-export type SerializedOrder = Omit<Order, "totalAmount"> & {
-  totalAmount: number;
-  orderItems: SerializedOrderItem[];
-};
-
-export type SerializedOrderItem = Omit<OrderItem, "price"> & {
-  price: number;
-};
+import {
+  CreateOrderData,
+  SerializedOrder,
+  OrderStatus,
+  OrdersPaginationResult,
+  OrderSearchFilters,
+} from "@/types/order";
+import { generateOrderNumber, serializeOrder } from "@/utils/orderUtils";
+import {
+  calculatePagination,
+  getDefaultPagination,
+  validatePaginationParams,
+} from "@/utils/paginationUtils";
+import { Prisma } from "@prisma/client";
 
 /**
  * Create a new order with order items
@@ -72,6 +63,7 @@ export async function createOrder(
       // Create the order
       const createdOrder = await tx.order.create({
         data: {
+          orderNumber: generateOrderNumber(),
           customerName: orderData.customerName,
           customerEmail: orderData.customerEmail,
           customerPhone: orderData.customerPhone,
@@ -234,5 +226,78 @@ export async function getRecentOrders(
   } catch (error) {
     console.error("Error fetching recent orders:", error);
     return [];
+  }
+}
+
+/**
+ * returns orders with pagination, search, and filtering for admin
+ */
+
+export async function getOrdersWithPagination(
+  page: number = 1,
+  limit: number = 10,
+  filters: OrderSearchFilters
+): Promise<OrdersPaginationResult> {
+  const { currentPage, take, skip } = validatePaginationParams(page, limit);
+  try {
+    // Build where clause for search filter
+    const whereClause: Prisma.OrderWhereInput = {};
+
+    const searchTerm = filters.search?.trim();
+    if (searchTerm) {
+      whereClause.OR = [
+        { customerName: { contains: searchTerm, mode: "insensitive" } },
+        { customerEmail: { contains: searchTerm, mode: "insensitive" } },
+        { customerPhone: { contains: searchTerm, mode: "insensitive" } },
+        { orderNumber: { contains: searchTerm, mode: "insensitive" } },
+      ];
+    }
+
+    // Order status filter
+    if (filters.status && filters.status !== "all") {
+      whereClause.status = filters.status;
+    }
+
+    // Order type filter
+    if (filters.type === "digital_only") {
+      whereClause.isDigital = true;
+    }
+    if (filters.type === "has_physical") {
+      whereClause.isDigital = false;
+    }
+
+    // Payment status filter
+    if (filters.paymentStatus && filters.paymentStatus !== "all") {
+      whereClause.paymentStatus = filters.paymentStatus;
+    }
+
+    // Get orders and total count in parallel with filters applied
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where: whereClause,
+        include: { orderItems: true },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+      }),
+      prisma.order.count({ where: whereClause }),
+    ]);
+
+    // Serialize orders for client components
+    const serializedOrders = orders.map(serializeOrder);
+
+    // Calculate pagination metadata using utility
+    const pagination = calculatePagination(currentPage, take, total);
+
+    return {
+      orders: serializedOrders,
+      pagination,
+    };
+  } catch (error) {
+    console.error("Error fetching orders with pagination:", error);
+    return {
+      orders: [],
+      pagination: getDefaultPagination(limit),
+    };
   }
 }

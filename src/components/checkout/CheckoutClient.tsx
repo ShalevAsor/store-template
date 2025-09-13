@@ -9,7 +9,7 @@ import { OrderSummary } from "@/components/checkout/OrderSummary";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { processCheckout, CheckoutResult } from "@/lib/actions/checkoutAction";
-import { calculateOrderTotals } from "@/utils/priceUtils";
+import { calculateOrderTotals } from "@/utils/orderUtils";
 import { toast } from "sonner";
 import type { CheckoutFormData } from "@/schemas/checkoutSchema";
 import { useModalStore } from "@/store/modalStore";

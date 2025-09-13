@@ -1,12 +1,12 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { ProductsSearchFilter } from "@/components/admin/ProductsSearchFilter";
+import { ProductsSearchFilter } from "@/components/admin/products/ProductsSearchFilter";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { getProductsWithPagination } from "@/lib/products";
 import { Pagination } from "@/components/shared/Pagination";
 import { ProductSearchFilters, ProductStatusFilter } from "@/types/product";
-import { AdminProductsClient } from "@/components/admin/AdminProductsClient";
+import { AdminProductsClient } from "@/components/admin/products/AdminProductsClient";
 
 interface AdminProductsPageProps {
   searchParams: Promise<{
@@ -114,7 +114,7 @@ export default async function ProductsPage({
               totalPages={pagination.totalPages}
               hasNextPage={pagination.hasNextPage}
               hasPreviousPage={pagination.hasPreviousPage}
-              total={pagination.total}
+              total={pagination.totalItems}
               limit={pagination.limit}
             />
           </>

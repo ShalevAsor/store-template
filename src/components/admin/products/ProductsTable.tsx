@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ProductActionsDropdown } from "@/components/admin/ProductActionsDropdown";
+import { ProductActionsDropdown } from "@/components/admin/products/ProductActionsDropdown";
 import Link from "next/link";
 import { SerializedProduct } from "@/types/product";
 import { formatPrice } from "@/utils/priceUtils";
@@ -21,13 +21,11 @@ import { getImageUrl } from "@/lib/images";
 interface ProductsTableProps {
   products: SerializedProduct[];
   onDeleteProduct: (id: string, name: string) => void;
-  deletingId: string | null;
 }
 
 export function ProductsTable({
   products,
   onDeleteProduct,
-  deletingId,
 }: ProductsTableProps) {
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("en-US", {
@@ -179,7 +177,6 @@ export function ProductsTable({
                   productId={product.id}
                   productSlug={product.slug}
                   onDelete={() => onDeleteProduct(product.id, product.name)}
-                  isDeleting={deletingId === product.id}
                 />
               </TableCell>
             </TableRow>

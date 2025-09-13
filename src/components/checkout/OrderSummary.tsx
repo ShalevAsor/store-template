@@ -6,11 +6,11 @@ import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 // Import centralized price utilities
 import {
-  calculateOrderTotals,
   formatLineItemPrice,
   getShippingDisplayText,
   getFreeShippingMessage,
 } from "@/utils/priceUtils";
+import { calculateOrderTotals } from "@/utils/orderUtils";
 
 export const OrderSummary: React.FC = () => {
   const { items, getTotalItems } = useCartStore();

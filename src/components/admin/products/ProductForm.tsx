@@ -29,7 +29,7 @@ import {
   defaultProductValues,
 } from "@/schemas/productSchema";
 import { ProductStatus } from "@prisma/client";
-import { ImageUploadField } from "@/components/admin/ImageUploadField";
+import { ImageUploadField } from "@/components/admin/products/ImageUploadField";
 import { FormCard } from "@/components/shared/FormCard";
 import { uploadFileToS3 } from "@/lib/upload";
 import { toast } from "sonner";

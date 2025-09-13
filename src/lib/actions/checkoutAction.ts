@@ -4,12 +4,13 @@ import {
   createCheckoutFormSchema,
   type CheckoutFormData,
 } from "@/schemas/checkoutSchema";
-import { createOrder, CreateOrderData } from "@/lib/orders";
+import { createOrder } from "@/lib/orders";
 import { CartItem } from "@/types/cart";
+import { CreateOrderData } from "@/types/order";
 import { StockAdjustment } from "@/types/stock";
 import { isDigitalOrder, validateCartItems } from "@/utils/orderUtils";
 import { getErrorMessage } from "@/utils/errorUtils";
-import { calculateOrderTotals } from "@/utils/priceUtils";
+import { calculateOrderTotals } from "@/utils/orderUtils";
 import { prisma } from "@/lib/prisma";
 
 // Updated server action return type

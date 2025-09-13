@@ -58,6 +58,7 @@ model ProductImage{
 
 model Order {
   id              String      @id @default(cuid())
+  orderNumber     String      @unique
   customerName    String
   customerEmail   String
   customerPhone   String?
@@ -66,6 +67,7 @@ model Order {
   isDigital       Boolean     @default(false) // Track if order contains only digital products
   totalAmount     Decimal     @db.Decimal(10, 2)
   status          OrderStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   
@@ -83,6 +85,7 @@ model OrderItem {
   productName String  // Store product name at time of order
   price       Decimal @db.Decimal(10, 2) // Store price at time of order
   quantity    Int
+  
   
   // Relations
   order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -110,4 +113,14 @@ enum ProductStatus {
   ARCHIVED  // Hidden but not deleted
   
   @@map("product_status")
+}
+
+enum PaymentStatus {
+  PENDING    // Payment not yet processed
+  PROCESSING // Payment being processed
+  PAID       // Payment successful
+  FAILED     // Payment failed
+  REFUNDED   // Payment refunded
+  
+  @@map("payment_status")
 }

@@ -1,42 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ProductForm } from "@/components/admin/ProductForm";
+import { ProductForm } from "@/components/admin/products/ProductForm";
 import {
-  updateProduct,
+  createProduct,
   ProductActionResult,
 } from "@/lib/actions/productActions";
 import { ProductFormData } from "@/schemas/productSchema";
-import { UseFormSetError } from "react-hook-form";
+import { UseFormReset, UseFormSetError } from "react-hook-form";
 
-interface EditProductClientProps {
-  productId: string;
-  initialData: ProductFormData;
-}
-
-export function EditProductClient({
-  productId,
-  initialData,
-}: EditProductClientProps) {
-  const router = useRouter();
+export function CreateProductClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (
     data: ProductFormData,
-    setError: UseFormSetError<ProductFormData>
+    setError: UseFormSetError<ProductFormData>,
+    reset?: UseFormReset<ProductFormData>
   ) => {
     setIsSubmitting(true);
 
     try {
-      const result: ProductActionResult = await updateProduct(productId, data);
+      const result: ProductActionResult = await createProduct(data);
 
       if (result.success && result.data) {
-        toast.success("Product updated successfully!");
-        router.push("/admin/products");
+        toast.success("Product created successfully!");
+        reset?.();
       } else {
-        // Show field-level errors
+        // Set server-side field errors
         if (result.fieldErrors) {
           Object.entries(result.fieldErrors).forEach(([field, messages]) => {
             if (field in data) {
@@ -47,13 +38,13 @@ export function EditProductClient({
             }
           });
         }
-        // General error
+        // Show general error if provided
         if (result.error) {
           toast.error(result.error);
         }
       }
     } catch (error) {
-      console.error("Unexpected error updating product:", error);
+      console.error("Unexpected error creating product:", error);
       toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -62,10 +53,9 @@ export function EditProductClient({
 
   return (
     <ProductForm
-      initialData={initialData}
       onSubmit={handleSubmit}
       isSubmitting={isSubmitting}
-      submitButtonText="Update Product"
+      submitButtonText="Create Product"
     />
   );
 }

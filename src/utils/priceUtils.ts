@@ -1,4 +1,5 @@
 import { CartItem } from "@/types/cart";
+import { isDigitalOrder } from "./orderUtils";
 
 // Constants for pricing calculations
 export const PRICING_CONFIG = {
@@ -12,24 +13,6 @@ export interface PriceFormat {
   originalPrice?: string;
   savings?: string;
   hasDiscount: boolean;
-}
-
-export interface OrderTotals {
-  subtotal: number;
-  shipping: number;
-  tax: number;
-  total: number;
-  isDigital: boolean;
-  // Formatted versions for display
-  formatted: {
-    subtotal: string;
-    shipping: string;
-    tax: string;
-    total: string;
-  };
-  // Helper properties
-  qualifiesForFreeShipping: boolean;
-  amountNeededForFreeShipping: number;
 }
 
 export interface LineItemPrice {
@@ -86,82 +69,6 @@ export const formatLineItemPrice = (
   };
 };
 
-// ==================== ORDER CALCULATION FUNCTIONS ====================
-
-/**
- * Check if order contains only digital products
- */
-export const isDigitalOrder = (items: CartItem[]): boolean => {
-  return items.every((item) => item.isDigital);
-};
-
-/**
- * Calculate subtotal from cart items
- */
-export const calculateSubtotal = (items: CartItem[]): number => {
-  return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-};
-
-/**
- * Calculate shipping cost based on items and subtotal
- */
-export const calculateShipping = (
-  items: CartItem[],
-  subtotal: number
-): number => {
-  // No shipping for digital-only orders
-  if (isDigitalOrder(items)) {
-    return 0;
-  }
-
-  // Free shipping over threshold
-  if (subtotal >= PRICING_CONFIG.FREE_SHIPPING_THRESHOLD) {
-    return 0;
-  }
-
-  return PRICING_CONFIG.STANDARD_SHIPPING_COST;
-};
-
-/**
- * Calculate tax based on subtotal
- */
-export const calculateTax = (subtotal: number): number => {
-  return subtotal * PRICING_CONFIG.TAX_RATE;
-};
-
-/**
- * Calculate complete order totals
- */
-export const calculateOrderTotals = (items: CartItem[]): OrderTotals => {
-  const subtotal = calculateSubtotal(items);
-  const shipping = calculateShipping(items, subtotal);
-  const tax = calculateTax(subtotal);
-  const total = subtotal + shipping + tax;
-  const isDigital = isDigitalOrder(items);
-
-  return {
-    subtotal,
-    shipping,
-    tax,
-    total,
-    isDigital,
-    // Formatted versions for display
-    formatted: {
-      subtotal: formatPrice(subtotal),
-      shipping: formatPrice(shipping),
-      tax: formatPrice(tax),
-      total: formatPrice(total),
-    },
-    // Helper properties
-    qualifiesForFreeShipping:
-      subtotal >= PRICING_CONFIG.FREE_SHIPPING_THRESHOLD,
-    amountNeededForFreeShipping: Math.max(
-      0,
-      PRICING_CONFIG.FREE_SHIPPING_THRESHOLD - subtotal
-    ),
-  };
-};
-
 // ==================== DISPLAY HELPER FUNCTIONS ====================
 
 /**
@@ -208,28 +115,6 @@ export const getFreeShippingMessage = (
 
   const needed = PRICING_CONFIG.FREE_SHIPPING_THRESHOLD - subtotal;
   return `Add ${formatPrice(needed)} more for free shipping`;
-};
-
-// ==================== ORDER DISPLAY FUNCTIONS ====================
-
-/**
- * Format order ID for display
- */
-export const formatOrderId = (id: string): string => {
-  return `#${id.slice(-8).toUpperCase()}`;
-};
-
-/**
- * Format order date for display
- */
-export const formatOrderDate = (date: Date): string => {
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 };
 
 // ==================== STOCK DISPLAY FUNCTIONS ====================

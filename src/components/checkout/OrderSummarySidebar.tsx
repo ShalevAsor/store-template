@@ -1,6 +1,7 @@
 import { CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { formatPrice, calculateTax } from "@/utils/priceUtils";
+import { formatPrice } from "@/utils/priceUtils";
+import { calculateTax } from "@/utils/orderUtils";
 
 interface OrderSummarySidebarProps {
   totalAmount: number;

@@ -1,12 +1,12 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProductForAdmin } from "@/lib/products";
-import { EditProductClient } from "@/components/admin/EditProductClient";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { EditProductClient } from "@/components/admin/products/EditProductClient";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { productToFormData } from "@/schemas/productSchema";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 
 interface EditProductPageProps {
   params: Promise<{
@@ -51,13 +51,12 @@ export default async function EditProductPage({
 
   return (
     <div className="space-y-2">
-      <PageHeader
-        title={`Edit Product: ${product.name}`}
-        description="Update product information and settings"
-      />
-
-      {/* Back Button  */}
-      <div className="flex items-center gap-4">
+      {/* Header with navigation */}
+      <div className="flex justify-between">
+        <AdminHeader
+          title={`Edit Product: ${product.name}`}
+          subtitle="Update product information and settings"
+        />
         <Button variant="ghost" size="sm" asChild>
           <Link href="/admin/products" className="flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
