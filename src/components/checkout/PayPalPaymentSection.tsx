@@ -194,7 +194,7 @@ export function PayPalPaymentSection({
       {/* Payment info */}
       <div className="text-xs text-gray-500 text-center space-y-1">
         <p>Secure payment powered by PayPal</p>
-        <p>You'll be redirected to PayPal to complete your payment</p>
+        <p>You&apos;ll be redirected to PayPal to complete your payment</p>
       </div>
     </div>
   );

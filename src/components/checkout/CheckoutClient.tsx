@@ -263,7 +263,7 @@ export function CheckoutClient() {
               Processing payment...
             </p>
             <p className="text-sm text-gray-600">
-              Please don't close this page
+              Please do&apos;'t close this page
             </p>
           </div>
         </div>
