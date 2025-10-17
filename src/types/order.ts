@@ -26,19 +26,8 @@ export type OrderWithItems = Order & {
   orderItems: OrderItem[];
 };
 
-// Serialized types for client components
-
-export type SerializedOrderItem = Omit<OrderItem, "price"> & {
-  price: number;
-};
-
-export type SerializedOrder = Omit<Order, "totalAmount"> & {
-  totalAmount: number;
-  orderItems: SerializedOrderItem[];
-};
-
 export type OrdersPaginationResult = {
-  orders: SerializedOrder[];
+  orders: OrderWithItems[];
   pagination: PaginationMeta;
 };
 

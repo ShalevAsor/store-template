@@ -1,207 +1,129 @@
 "use server";
 
-import {
-  createCheckoutFormSchema,
-  type CheckoutFormData,
-} from "@/schemas/checkoutSchema";
-import { createOrder } from "@/lib/orders";
+import { revalidatePath } from "next/cache";
+import { ActionResult } from "@/types/common";
 import { CartItem } from "@/types/cart";
-import { CreateOrderData } from "@/types/order";
-import { StockAdjustment } from "@/types/stock";
-import { isDigitalOrder, validateCartItems } from "@/utils/orderUtils";
-import { getErrorMessage } from "@/utils/errorUtils";
-import { calculateOrderTotals } from "@/utils/orderUtils";
+import { CheckoutFormData, checkoutFormSchema } from "@/schemas/checkoutSchema";
+import { createErrorResult } from "@/utils/errorUtils";
 import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import {
+  applyStockAdjustments,
+  validateCartItemsAndStock,
+} from "../validation/stockValidation";
+import { createOrderWithItems, updateStockForOrder } from "./orderActions";
 
-// Updated server action return type
-export interface CheckoutResult {
-  success: boolean;
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  orderId?: string;
-
-  // Stock validation fields
-  stockIssues?: StockAdjustment[];
-  adjustedTotal?: number;
-  needsConfirmation?: boolean;
+interface ProcessCheckoutOptions {
+  confirmed?: boolean; // User confirmed they want to proceed with stock adjustments
 }
 
 /**
- * Validate current stock levels for cart items
- */
-async function validateCurrentStock(cartItems: CartItem[]): Promise<{
-  hasIssues: boolean;
-  adjustments: StockAdjustment[];
-  adjustedTotal: number;
-}> {
-  const adjustments: StockAdjustment[] = [];
-  const adjustedItems: CartItem[] = [];
-
-  for (const item of cartItems) {
-    // Get current stock from database
-    const product = await prisma.product.findUnique({
-      where: { id: item.id },
-      select: { stock: true, name: true },
-    });
-
-    if (!product) {
-      // Product not found - treat as removed
-      adjustments.push({
-        productId: item.id,
-        productName: item.name,
-        requestedQuantity: item.quantity,
-        availableQuantity: 0,
-        action: "removed",
-      });
-      continue;
-    }
-
-    // Check stock availability (applies to all products, digital or physical)
-    if (product.stock === null) {
-      // Unlimited stock - no adjustment needed
-      adjustedItems.push(item);
-    } else if (product.stock === 0) {
-      // Out of stock - remove item
-      adjustments.push({
-        productId: item.id,
-        productName: product.name,
-        requestedQuantity: item.quantity,
-        availableQuantity: 0,
-        action: "removed",
-      });
-    } else if (product.stock < item.quantity) {
-      // Insufficient stock - reduce quantity
-      adjustments.push({
-        productId: item.id,
-        productName: product.name,
-        requestedQuantity: item.quantity,
-        availableQuantity: product.stock,
-        action: "reduced",
-      });
-      adjustedItems.push({
-        ...item,
-        quantity: product.stock,
-      });
-    } else {
-      // Sufficient stock - no adjustment needed
-      adjustedItems.push(item);
-    }
-  }
-
-  // Calculate new total with adjusted items
-  const adjustedTotals = calculateOrderTotals(adjustedItems);
-
-  return {
-    hasIssues: adjustments.length > 0,
-    adjustments,
-    adjustedTotal: adjustedTotals.total,
-  };
-}
-
-/**
- * Main checkout server action
+ * Process checkout in a single atomic transaction
+ * Orchestrates validation, stock management, and order creation
  */
 export async function processCheckout(
   formData: CheckoutFormData,
   cartItems: CartItem[],
-  options?: { confirmed?: boolean }
-): Promise<CheckoutResult> {
+  options: ProcessCheckoutOptions = {}
+): Promise<ActionResult<{ orderId: string }>> {
   try {
-    // Validate cart items first
-    const cartValidation = validateCartItems(cartItems);
-    if (!cartValidation.success) {
-      return { success: false, error: cartValidation.error };
-    }
+    console.log("Processing checkout:", {
+      customerEmail: formData.customerEmail,
+      itemCount: cartItems.length,
+      isConfirmed: options.confirmed,
+    });
 
-    // Stock validation - skip if user already confirmed
-    if (!options?.confirmed) {
-      const stockValidation = await validateCurrentStock(cartItems);
-      if (stockValidation.hasIssues) {
-        return {
-          success: false,
-          stockIssues: stockValidation.adjustments,
-          adjustedTotal: stockValidation.adjustedTotal,
-          needsConfirmation: true,
-        };
-      }
-    }
+    // Validate form data with zod checkout schema
+    const validatedData = checkoutFormSchema.parse(formData);
 
-    // Determine if order is digital
-    const orderIsDigital = isDigitalOrder(cartItems);
-
-    // Server-side form validation
-    const validationSchema = createCheckoutFormSchema(orderIsDigital);
-    const validationResult = validationSchema.safeParse(formData);
-
-    if (!validationResult.success) {
-      const fieldErrors: Record<string, string[]> = {};
-
-      validationResult.error.issues.forEach((issue) => {
-        const path = issue.path.join(".");
-        if (!fieldErrors[path]) {
-          fieldErrors[path] = [];
-        }
-        fieldErrors[path].push(issue.message);
+    // Ensure we have items
+    if (!cartItems || cartItems.length === 0) {
+      return createErrorResult({
+        message: "Your cart is empty. Please add items before checkout.",
       });
-
-      return {
-        success: false,
-        error: "Please check the form for errors",
-        fieldErrors,
-      };
     }
 
-    const validatedForm = validationResult.data;
+    // Process everything in a single atomic transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Validate cart items and check stock
+      const { productErrors, stockIssues, adjustedTotal } =
+        await validateCartItemsAndStock(cartItems, tx);
 
-    // Prepare order data
-    const orderData: CreateOrderData = {
-      customerName: validatedForm.customerName.trim(),
-      customerEmail: validatedForm.customerEmail.trim(),
-      customerPhone: validatedForm.customerPhone?.trim(),
-      shippingAddress: validatedForm.shippingAddress?.trim(),
-      paymentMethod: validatedForm.paymentMethod,
-      isDigital: orderIsDigital,
-      items: cartItems.map((item) => ({
-        productId: item.id,
-        productName: item.name,
-        price: item.price,
-        quantity: item.quantity,
-      })),
-    };
+      // Handle validation errors
+      if (productErrors.length > 0) {
+        throw new Error(productErrors.join(". "));
+      }
 
-    // Create order in database (this will do final stock validation with transaction)
-    console.log("Creating order with items:", orderData.items);
+      // Handle stock confirmation if needed
+      if (stockIssues.length > 0 && !options.confirmed) {
+        throw new Error(
+          `STOCK_CONFIRMATION_NEEDED:${JSON.stringify({
+            stockIssues,
+            adjustedTotal,
+          })}`
+        );
+      }
 
-    const order = await createOrder(orderData);
+      // Apply stock adjustments if user confirmed
+      let finalCartItems = cartItems;
+      if (stockIssues.length > 0 && options.confirmed) {
+        finalCartItems = applyStockAdjustments(cartItems, stockIssues);
+      }
 
-    // TODO: Process payment, send emails, etc.
-    console.log(
-      `Order ${order.id} created successfully for ${order.customerEmail}`
-    );
+      // Update product stock levels
+      // await updateStockForOrder(finalCartItems, tx);
+
+      // Create the order
+      const order = await createOrderWithItems(
+        validatedData,
+        finalCartItems,
+        tx
+      );
+
+      return order;
+    });
+
+    console.log("Order created successfully:", {
+      orderId: result.id,
+      orderNumber: result.orderNumber,
+    });
+
+    revalidatePath("/cart");
 
     return {
       success: true,
-      orderId: order.id,
+      data: { orderId: result.id },
     };
   } catch (error) {
-    console.error("Checkout error:", error);
+    console.error("Checkout processing error:", error);
 
-    // Handle redirect errors
-    if (error instanceof Error && error.message.includes("redirect")) {
-      throw error;
-    }
-
-    // Handle stock errors from createOrder
-    if (error instanceof Error && error.message.includes("stock")) {
+    // Handle validation errors
+    if (error instanceof z.ZodError) {
+      const flattened = z.flattenError(error);
       return {
         success: false,
-        error: error.message,
+        error: "Invalid data provided",
+        fieldErrors: flattened.fieldErrors,
       };
     }
 
-    return {
-      success: false,
-      error: getErrorMessage(error),
-    };
+    // Handle stock confirmation needed error
+    if (
+      error instanceof Error &&
+      error.message.startsWith("STOCK_CONFIRMATION_NEEDED:")
+    ) {
+      const stockData = JSON.parse(
+        error.message.replace("STOCK_CONFIRMATION_NEEDED:", "")
+      );
+      return {
+        success: false,
+        error: "Some items in your cart have insufficient stock",
+        needsConfirmation: true,
+        stockIssues: stockData.stockIssues,
+        adjustedTotal: stockData.adjustedTotal,
+      };
+    }
+
+    return createErrorResult({ error });
   }
 }

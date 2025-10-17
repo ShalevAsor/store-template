@@ -1,8 +1,8 @@
-import { SerializedProduct } from "@/types/product";
+import { ProductWithImages } from "@/types/product";
 import { ProductCard } from "./ProductCard";
 
 interface RelatedProductsProps {
-  products: SerializedProduct[];
+  products: ProductWithImages[];
 }
 
 export const RelatedProducts: React.FC<RelatedProductsProps> = ({

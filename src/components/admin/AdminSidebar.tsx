@@ -29,6 +29,7 @@ export const AdminSidebar: React.FC = () => {
     { name: "Orders", url: "/admin/orders", icon: ShoppingCart },
     { name: "Customers", url: "/admin/customers", icon: Users },
     { name: "Settings", url: "/admin/settings", icon: Settings },
+    { name: "Store", url: "/", icon: Store },
   ];
 
   return (

@@ -77,6 +77,7 @@ export const useCartStore = create<CartState & CartActions>()(
       // Get total items count
       getTotalItems: () => {
         const { items } = get();
+
         return items.reduce((total, item) => total + item.quantity, 0);
       },
 

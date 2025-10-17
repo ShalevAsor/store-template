@@ -1,38 +1,63 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 import { useHydration } from "@/hooks/use-hydration";
+import { useCheckoutState } from "@/hooks/use-checkout-state";
+import { usePaymentRecovery } from "@/hooks/use-payment-recovery";
+import { useModalStore } from "@/store/modalStore";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 import { OrderSummary } from "@/components/checkout/OrderSummary";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { processCheckout, CheckoutResult } from "@/lib/actions/checkoutAction";
+import { ErrorMessage } from "@/components/shared/ErrorMessage";
+import { processCheckout } from "@/lib/actions/checkoutAction";
 import { calculateOrderTotals } from "@/utils/orderUtils";
 import { toast } from "sonner";
 import type { CheckoutFormData } from "@/schemas/checkoutSchema";
-import { useModalStore } from "@/store/modalStore";
+import { PaymentSection } from "../payment/PaymentSection";
 
 export function CheckoutClient() {
   const router = useRouter();
+  // manage cart state
   const { items, clearCart, updateQuantity, removeItem } = useCartStore();
-  const hasHydrated = useHydration();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // for stock confirmation modal
   const { onOpen } = useModalStore();
+  const hasHydrated = useHydration();
+  // manage checkout state
+  const { state, actions, isForm, isPayment, isProcessing, isError, hasOrder } =
+    useCheckoutState();
 
-  const handleFormSubmit = async (
-    formData: CheckoutFormData
-  ): Promise<CheckoutResult> => {
-    setIsSubmitting(true);
+  // payment recovery hook - runs in background when payment fails
+  usePaymentRecovery({
+    orderId: state.orderId,
+    enabled: state.needsRecovery && !!state.orderId, // only when processing with orderId
+    onSuccess: () => {
+      // recovery successful - webhook completed payment
+      actions.stopRecovery();
+      handlePaymentComplete(state.orderId!);
+    },
+    onFailure: (error: string) => {
+      // Genuine failure after recovery attempts
+      actions.stopRecovery();
+      actions.setError(error, true);
+      toast.error(error);
+    },
+  });
 
+  // Handle form submission
+  const handleFormSubmit = async (formData: CheckoutFormData) => {
+    actions.startOrderCreation();
     try {
       const result = await processCheckout(formData, items);
-
-      // Handle stock issues - show modal for user confirmation
+      if (result.success && result.data?.orderId) {
+        actions.orderCreated(result.data.orderId, formData.paymentMethod);
+        toast.success("Order created! Please complete payment.");
+        return;
+      }
+      // Handle stock confirmation if needed
       if (result.needsConfirmation && result.stockIssues) {
         const originalTotals = calculateOrderTotals(items);
-
         onOpen("stockConfirmation", {
           stockConfirmation: {
             stockAdjustments: result.stockIssues,
@@ -61,8 +86,7 @@ export function CheckoutClient() {
                     }
                     return item;
                   });
-
-                // Update cart store for UI consistency
+                // update cart store for UI consistency
                 result.stockIssues?.forEach((adjustment) => {
                   if (adjustment.action === "removed") {
                     removeItem(adjustment.productId);
@@ -73,82 +97,114 @@ export function CheckoutClient() {
                     );
                   }
                 });
-
-                // Retry checkout with confirmed flag and ADJUSTED items
-                const confirmedResult = await processCheckout(
+                // Retry checkout with confirmed flag and adjusted items
+                const confirmResult = await processCheckout(
                   formData,
                   adjustedItems,
-                  {
-                    confirmed: true,
-                  }
+                  { confirmed: true }
                 );
-
-                if (confirmedResult.success && confirmedResult.orderId) {
-                  clearCart();
-                  router.push(`/checkout/success/${confirmedResult.orderId}`);
+                if (confirmResult.success && confirmResult.data?.orderId) {
+                  actions.orderCreated(
+                    confirmResult.data.orderId,
+                    formData.paymentMethod
+                  );
+                  toast.success("Order created! Please complete payment.");
                 } else {
-                  setIsSubmitting(false);
-                  // Handle different types of errors
-                  if (
-                    confirmedResult.error?.includes("stock") ||
-                    confirmedResult.error?.includes("Insufficient")
-                  ) {
-                    // Stock changed while processing - redirect to cart
-                    toast.error(
-                      "Items in your cart are no longer available. Please review your cart and try again."
-                    );
-                    router.push("/cart");
-                  } else {
-                    // Other errors - show generic message
-                    toast.error(
-                      confirmedResult.error ||
-                        "Failed to process order. Please try again."
-                    );
-                  }
+                  actions.setError(
+                    confirmResult.error ||
+                      "Failed to process order. Please try again.",
+                    true
+                  );
                 }
               } catch (error) {
                 console.error("Confirmed checkout error:", error);
-                setIsSubmitting(false);
-
-                // Handle caught errors (network issues, etc.)
-                if (error instanceof Error && error.message.includes("stock")) {
-                  toast.error(
-                    "Items in your cart are no longer available. Please review your cart and try again."
-                  );
-                  router.push("/cart");
-                } else {
-                  toast.error("Failed to process order. Please try again.");
-                }
+                actions.setError(
+                  "Failed to process order. Please try again.",
+                  true
+                );
               }
             },
             onCancel: () => {
-              setIsSubmitting(false); // Reset loading state
+              actions.resetError(); // Reset to form state
             },
           },
         });
-
-        // Don't reset loading state here - keep it active for modal interaction
-        return result;
+        // Don't proceed further - wait for user confirmation
+        return;
       }
+      // Handle validation errors
+      if (!result.success && result.fieldErrors) {
+        console.log(
+          "🔴 Server validation errors received:",
+          result.fieldErrors
+        );
+        actions.resetError();
 
-      // Normal success case
-      if (result.success && result.orderId) {
-        clearCart();
-        router.push(`/checkout/success/${result.orderId}`);
-        return result;
+        // Format field names for better readability
+        const formatFieldName = (field: string) => {
+          const fieldMap: Record<string, string> = {
+            customerName: "Name",
+            customerEmail: "Email",
+            customerPhone: "Phone",
+            "shippingAddress.line1": "Street Address",
+            "shippingAddress.city": "City",
+            "shippingAddress.postalCode": "Postal Code",
+            "shippingAddress.country": "Country",
+          };
+          return fieldMap[field] || field;
+        };
+
+        // Show errors in toast
+        Object.entries(result.fieldErrors).forEach(([field, messages]) => {
+          toast.error(`${formatFieldName(field)}: ${messages[0]}`);
+        });
+        // Show general error :
+        if (result.error) {
+          toast.error(result.error);
+        }
+        return;
       }
-
-      // Reset submitting state on error
-      setIsSubmitting(false);
-      return result;
+      // Handle other errors
+      actions.setError(
+        result.error || "Failed to process order. Please try again.",
+        true
+      );
     } catch (error) {
       console.error("Checkout submission error:", error);
-      setIsSubmitting(false);
-      return {
-        success: false,
-        error: "Failed to process your order. Please try again.",
-      };
+      actions.setError("Failed to process your order. Please try again.", true);
     }
+  };
+  // Handle payment completion
+  const handlePaymentComplete = (orderId: string) => {
+    toast.success("Payment successful! Redirecting...");
+    actions.paymentCompleted();
+    clearCart();
+    router.push(`/checkout/success/${orderId}`);
+  };
+  // Handle payment start
+  const handlePaymentStart = () => {
+    actions.paymentProcessing();
+  };
+
+  // Handle payment error
+  const handlePaymentError = (error: string) => {
+    if (state.orderId) {
+      console.log(
+        "Payment capture failed, recovery will start automatically...",
+        error
+      );
+      // start recovery state
+      actions.startRecovery();
+    } else {
+      // No order ID means genuine error before payment started
+      actions.setError(error, true);
+      toast.error(error);
+    }
+  };
+
+  // Handle retry from error state
+  const handleRetry = () => {
+    actions.resetError();
   };
 
   // Show loading while hydrating
@@ -160,7 +216,7 @@ export function CheckoutClient() {
     );
   }
 
-  // Show empty state if cart is empty after hydration
+  // Show empty state if cart is empty
   if (items.length === 0) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
@@ -174,55 +230,94 @@ export function CheckoutClient() {
       </div>
     );
   }
+  // Show error state
+  if (isError) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="max-w-md w-full">
+          <ErrorMessage
+            message={state.error || "Something went wrong"}
+            variant="error"
+            onRetry={state.canRetry ? handleRetry : undefined}
+            onDismiss={handleRetry}
+          />
+        </div>
+      </div>
+    );
+  }
 
-  // Show processing overlay during submission
-  if (isSubmitting) {
+  // Show processing overlay
+  if (isProcessing) {
     return (
       <div className="relative">
-        {/* Dimmed checkout content */}
+        {/* Dimmed content */}
         <div className="opacity-50 pointer-events-none">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <CheckoutForm cartItems={items} onSubmit={handleFormSubmit} />
-            </div>
-            <div className="lg:col-span-1">
-              <div className="sticky top-8">
-                <OrderSummary />
-              </div>
-            </div>
-          </div>
+          <CheckoutLayout />
         </div>
 
         {/* Processing overlay */}
         <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-          <div className="text-center">
+          <div className="flex flex-col justify-center items-center ">
             <LoadingSpinner size="lg" />
             <p className="mt-4 text-lg font-medium text-gray-900">
-              Processing your order...
+              Processing payment...
             </p>
             <p className="text-sm text-gray-600">
-              {"Please don't close this page"}
+              Please don't close this page
             </p>
           </div>
         </div>
       </div>
     );
   }
+  // Show main checkout content
+  return <CheckoutLayout />;
 
-  // Show normal checkout content
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Checkout Form - Takes up 2 columns */}
-      <div className="lg:col-span-2">
-        <CheckoutForm cartItems={items} onSubmit={handleFormSubmit} />
-      </div>
+  // Layout component to avoid duplication
+  function CheckoutLayout() {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Content */}
+        <div className="lg:col-span-2">
+          {isForm && (
+            <CheckoutForm
+              cartItems={items}
+              onSubmit={handleFormSubmit}
+              isLoading={state.isLoading}
+            />
+          )}
 
-      {/* Order Summary - Takes up 1 column */}
-      <div className="lg:col-span-1">
-        <div className="sticky top-8">
-          <OrderSummary />
+          {isPayment && hasOrder && (
+            <div className="space-y-6">
+              {/* Success message */}
+              <div className="p-6 border rounded-lg bg-green-50 border-green-200">
+                <h3 className="text-lg font-semibold text-green-800 mb-2">
+                  Order Created Successfully!
+                </h3>
+                <p className="text-green-700 text-sm">
+                  Complete your payment below to finalize your order.
+                </p>
+              </div>
+
+              {/* Payment Section */}
+              <PaymentSection
+                orderId={state.orderId!}
+                paymentMethod={state.paymentMethod!}
+                onPaymentStart={handlePaymentStart}
+                onPaymentComplete={handlePaymentComplete}
+                onPaymentError={handlePaymentError}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Order Summary Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-8">
+            <OrderSummary />
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 }

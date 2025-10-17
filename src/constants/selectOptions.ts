@@ -43,10 +43,19 @@ export const ORDER_STATUS_OPTIONS: SelectOption[] = [
 
 // Payment status options
 export const PAYMENT_STATUS_OPTIONS: SelectOption[] = [
-  { value: "all", label: "All Payment Statuses" },
+  { value: "CREATED", label: "All Payment Statuses" },
   { value: "PENDING", label: "Pending" },
-  { value: "PROCESSING", label: "Processing" },
-  { value: "PAID", label: "Paid" },
+  { value: "APPROVED", label: "Approved" },
+  { value: "COMPLETED", label: "Completed" },
   { value: "FAILED", label: "Failed" },
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "EXPIRED", label: "Expired" },
   { value: "REFUNDED", label: "Refunded" },
+];
+
+// Country options - used in checkout form
+export const COUNTRY_OPTIONS: SelectOption[] = [
+  { value: "US", label: "United States" },
+  { value: "IL", label: "Israel" },
+  { value: "GB", label: "United Kingdom" },
 ];

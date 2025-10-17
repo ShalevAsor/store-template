@@ -1,9 +1,8 @@
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { OrderDetails } from "@/components/admin/orders/OrderDetails";
-import { Button } from "@/components/ui/button";
+import { CustomerInfoCard } from "@/components/admin/orders/CustomerInfoCard";
+import { OrderItemsCard } from "@/components/admin/orders/OrderItemsCard";
+import { OrderOverviewCard } from "@/components/admin/orders/OrderOverviewCard";
+import { PaymentInfoCard } from "@/components/admin/orders/PaymentInfoCard";
 import { getOrder } from "@/lib/orders";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 interface OrderDetailsPageParams {
@@ -24,23 +23,22 @@ export default async function OrderDetailsPage({
   }
 
   return (
-    <div className="space-y-2">
-      {/* Header with navigation  */}
-      <div className="flex justify-between">
-        <AdminHeader
-          title={`Order details`}
-          subtitle={`View full ${order.orderNumber} details`}
-        />
-        {/* Back to orders navigation */}
-        <Button asChild variant="ghost">
-          <Link href={"/admin/orders"}>
-            <ArrowLeft className="w-4 h-4" />
-            Back to Orders
-          </Link>
-        </Button>
+    <div className="space-y-8">
+      {/* Order overview */}
+      <div className="w-full">
+        <OrderOverviewCard order={order} />
       </div>
-      {/* Order details  */}
-      <OrderDetails order={order} />
+
+      {/* Two column layout for customer and payment info */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <CustomerInfoCard order={order} />
+        <PaymentInfoCard order={order} />
+      </div>
+
+      {/* Order Items */}
+      <div className="w-full">
+        <OrderItemsCard order={order} />
+      </div>
     </div>
   );
 }

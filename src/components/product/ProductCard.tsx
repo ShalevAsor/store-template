@@ -1,30 +1,21 @@
 "use client";
 
-import { SerializedProduct } from "@/types/product";
+import { ProductWithImages } from "@/types/product";
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "../shared/Badge";
 import { ImagePlaceholder } from "../shared/ImagePlaceholder";
-import { AddToCartButton } from "./AddToCartButton";
-// Import centralized price utilities
-import { formatPriceWithDiscount, getStockDisplay } from "@/utils/priceUtils";
+import { AddToCartButton } from "../cart/AddToCartButton";
 import { getImageUrl } from "@/lib/images";
+import { getStockDisplay } from "@/utils/statusUtils";
+import { formatPrice } from "@/utils/currencyUtils";
 
 interface ProductCardProps {
-  product: SerializedProduct;
+  product: ProductWithImages;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const mainImage = product.images[0]?.imageKey;
-
-  // Use centralized price formatting
-  const priceDisplay = formatPriceWithDiscount(
-    product.price,
-    product.compareAtPrice
-  );
-
-  // Use centralized stock display
-  const stockDisplay = getStockDisplay(product.stock, product.isDigital);
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
@@ -73,21 +64,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Pricing and Actions */}
         <div className="flex items-center justify-between">
           {/* Price Display */}
+
           <div className="flex flex-col">
-            {priceDisplay.hasDiscount ? (
-              <>
-                <span className="text-xl font-bold text-green-600">
-                  {priceDisplay.currentPrice}
-                </span>
-                <span className="text-sm text-gray-500 line-through">
-                  {priceDisplay.originalPrice}
-                </span>
-              </>
-            ) : (
-              <span className="text-xl font-bold text-green-600">
-                {priceDisplay.currentPrice}
-              </span>
-            )}
+            {/* Price Display */}
+            <span className="font-medium text-green-500">
+              {formatPrice(product.price)}
+            </span>
+            {product.compareAtPrice &&
+              product.compareAtPrice > product.price && (
+                <div className="text-xs text-gray-500 line-through">
+                  {formatPrice(product.compareAtPrice)}
+                </div>
+              )}
           </div>
 
           {/* Add to Cart Button */}
@@ -97,9 +85,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Stock Status for Physical Products Only */}
         {!product.isDigital && (
           <div className="mt-2">
-            <span className={`text-sm ${stockDisplay.className}`}>
-              {stockDisplay.text}
-            </span>
+            {getStockDisplay(product.stock, product.isDigital)}
           </div>
         )}
 

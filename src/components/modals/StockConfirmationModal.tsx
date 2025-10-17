@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useModalStore } from "@/store/modalStore";
-import { formatPrice } from "@/utils/priceUtils";
+import { formatPrice } from "@/utils/currencyUtils";
 import { AlertTriangle, Minus, X } from "lucide-react";
 
 export const StockConfirmationModal = () => {

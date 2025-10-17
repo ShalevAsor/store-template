@@ -1,14 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatLineItemPrice } from "@/utils/priceUtils";
+import { formatLineItemPrice } from "@/utils/currencyUtils";
 import { MapPin, Package, User } from "lucide-react";
-import { SerializedOrder } from "@/types/order";
-import { formatDate } from "@/utils/time";
+import { OrderWithItems } from "@/types/order";
+import { formatDate } from "@/utils/dateUtils";
+import { getShippingAddress } from "@/utils/orderUtils";
 
 interface OrderDetailsProps {
-  order: SerializedOrder;
+  order: OrderWithItems;
 }
-// TODO: replace format order id with order number from order
 export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
+  const shippingAddress = order.shippingLine1
+    ? getShippingAddress(order)
+    : undefined;
+
   return (
     <div className="lg:col-span-2 space-y-6">
       {/* Order Info */}
@@ -80,7 +84,7 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
       </Card>
 
       {/* Shipping Address (if not digital) */}
-      {!order.isDigital && order.shippingAddress && (
+      {!order.isDigital && shippingAddress && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -89,9 +93,7 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm whitespace-pre-line">
-              {order.shippingAddress}
-            </p>
+            <p className="text-sm whitespace-pre-line">{shippingAddress}</p>
           </CardContent>
         </Card>
       )}

@@ -1,11 +1,11 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import {
-  SerializedProduct,
   ProductSearchFilters,
   ProductsPaginationResult,
   ProductStatus,
   ValidationProductData,
+  ProductWithImages,
 } from "@/types/product";
 import {
   calculatePagination,
@@ -24,7 +24,7 @@ import { Prisma } from "@prisma/client";
 
 export async function getProductByID(
   id: string
-): Promise<SerializedProduct | null> {
+): Promise<ProductWithImages | null> {
   try {
     const product = await prisma.product.findUnique({
       where: {
@@ -40,7 +40,7 @@ export async function getProductByID(
     if (!product) {
       return null;
     }
-    return serializeProduct(product);
+    return product;
   } catch (error) {
     console.error("Error fetching product by id:", error);
     return null;
@@ -54,7 +54,7 @@ export async function getProductByID(
 
 export async function getProductBySlug(
   slug: string
-): Promise<SerializedProduct | null> {
+): Promise<ProductWithImages | null> {
   try {
     const product = await prisma.product.findUnique({
       where: {
@@ -70,7 +70,7 @@ export async function getProductBySlug(
     if (!product) {
       return null;
     }
-    return serializeProduct(product);
+    return product;
   } catch (error) {
     console.error("Error fetching product by slug:", error);
     return null;
@@ -83,7 +83,7 @@ export async function getProductBySlug(
 
 export async function getProductForAdmin(
   id: string
-): Promise<SerializedProduct | null> {
+): Promise<ProductWithImages | null> {
   try {
     const product = await prisma.product.findUnique({
       where: {
@@ -98,7 +98,7 @@ export async function getProductForAdmin(
     if (!product) {
       return null;
     }
-    return serializeProduct(product);
+    return product;
   } catch (error) {
     console.error("Error fetching product:", error);
     return null;
@@ -109,7 +109,7 @@ export async function getProductForAdmin(
  * Get all active products for customer-facing pages
  */
 
-export async function getProducts(): Promise<SerializedProduct[]> {
+export async function getProducts(): Promise<ProductWithImages[]> {
   try {
     const products = await prisma.product.findMany({
       where: { status: ProductStatus.ACTIVE },
@@ -123,7 +123,7 @@ export async function getProducts(): Promise<SerializedProduct[]> {
     if (!products) {
       return [];
     }
-    return products.map((product) => serializeProduct(product));
+    return products;
   } catch (error) {
     console.error("Error fetching products:", error);
     return [];
@@ -199,7 +199,7 @@ export async function getProductsForValidation(
 export async function getRelatedProducts(
   currentProductSlug: string,
   limit: number = 3
-): Promise<SerializedProduct[]> {
+): Promise<ProductWithImages[]> {
   try {
     const products = await prisma.product.findMany({
       where: {
@@ -217,7 +217,7 @@ export async function getRelatedProducts(
     if (!products) {
       return [];
     }
-    return products.map((product) => serializeProduct(product));
+    return products;
   } catch (error) {
     console.error("Error fetching related products:", error);
     return [];
@@ -304,15 +304,12 @@ export async function getProductsWithPagination(
       prisma.product.count({ where: whereClause }),
     ]);
 
-    // Serialize products for client components
-    const serializedProducts = products.map(serializeProduct);
-
     // Calculate pagination metadata
 
     const pagination = calculatePagination(currentPage, limit, total);
 
     return {
-      products: serializedProducts,
+      products,
       pagination,
     };
   } catch (error) {

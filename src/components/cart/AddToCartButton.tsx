@@ -3,15 +3,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
-import { SerializedProduct } from "@/types/product";
+import { ProductWithImages } from "@/types/product";
 import { useCartStore } from "@/store/cartStore";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { getImageUrl } from "@/lib/images";
 import { useHydration } from "@/hooks/use-hydration";
+import { formatPrice } from "@/utils/currencyUtils";
 
 interface AddToCartButtonProps {
-  product: SerializedProduct;
+  product: ProductWithImages;
   variant?: "simple" | "detailed";
   className?: string;
   buttonSize?: "sm" | "default" | "lg";
@@ -82,7 +83,7 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
       return "Add to Cart";
     }
 
-    return `Add to Cart - $${(product.price * finalQuantity).toFixed(2)}`;
+    return `Add to Cart - ${formatPrice(product.price * finalQuantity)}`;
   };
 
   // Only disable for truly out of stock items or while loading

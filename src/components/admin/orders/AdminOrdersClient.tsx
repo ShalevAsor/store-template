@@ -1,23 +1,28 @@
 "use client";
 
 import { OrdersTable } from "@/components/admin/orders/OrdersTable";
-import { SerializedOrder } from "@/types/order";
 import { useOrderActions } from "@/hooks/use-order-actions";
+import { OrderWithItems } from "@/types/order";
 
 interface AdminOrdersClientProps {
-  orders: SerializedOrder[];
+  orders: OrderWithItems[];
 }
 
 export function AdminOrdersClient({ orders }: AdminOrdersClientProps) {
-  const { handleCancelOrder, handleUpdateStatus, handleProcessRefund } =
-    useOrderActions();
+  const {
+    handleChangeOrderStatus,
+    handleChangePaymentStatus,
+    handleProcessRefund,
+    handleCancelOrder,
+  } = useOrderActions();
 
   return (
     <OrdersTable
       orders={orders}
-      onCancelOrder={handleCancelOrder}
-      onUpdateStatus={handleUpdateStatus}
+      onChangeOrderStatus={handleChangeOrderStatus}
+      onChangePaymentStatus={handleChangePaymentStatus}
       onProcessRefund={handleProcessRefund}
+      onCancelOrder={handleCancelOrder}
     />
   );
 }

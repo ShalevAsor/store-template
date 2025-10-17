@@ -3,8 +3,12 @@
  * Centralizes the state and control of all application modals using Zustand.
  * This store manages modal visibility, type, and associated data for the entire application.
  */
-import { ConfirmActionData } from "@/types/modals";
-import { StockConfirmationData } from "@/types/stock";
+import {
+  ConfirmActionData,
+  StockConfirmationData,
+  StatusSelectionData,
+  RefundModalData,
+} from "@/types/modals";
 import { create } from "zustand";
 
 /**
@@ -12,7 +16,11 @@ import { create } from "zustand";
  * Defines all possible modal types in the application.
  * This ensures type safety when opening modals throughout the app.
  */
-export type ModalType = "stockConfirmation" | "confirmAction";
+export type ModalType =
+  | "stockConfirmation"
+  | "confirmAction"
+  | "statusSelection"
+  | "refund";
 
 /**
  * Modal Data Interface
@@ -22,6 +30,8 @@ export type ModalType = "stockConfirmation" | "confirmAction";
 interface ModalData {
   stockConfirmation?: StockConfirmationData;
   confirmAction?: ConfirmActionData;
+  statusSelection?: StatusSelectionData;
+  refund?: RefundModalData;
 }
 
 /**

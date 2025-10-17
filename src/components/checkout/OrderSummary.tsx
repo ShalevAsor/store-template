@@ -5,22 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 // Import centralized price utilities
+import { formatLineItemPrice } from "@/utils/currencyUtils";
 import {
-  formatLineItemPrice,
-  getShippingDisplayText,
+  calculateOrderTotals,
   getFreeShippingMessage,
-} from "@/utils/priceUtils";
-import { calculateOrderTotals } from "@/utils/orderUtils";
+  getShippingCostDisplayText,
+} from "@/utils/orderUtils";
 
 export const OrderSummary: React.FC = () => {
   const { items, getTotalItems } = useCartStore();
 
   // Use centralized calculation instead of manual calculations
   const orderTotals = calculateOrderTotals(items);
-  const shippingDisplay = getShippingDisplayText(items, orderTotals.shipping);
-  const freeShippingMessage = getFreeShippingMessage(
-    items,
-    orderTotals.subtotal
+  const shippingDisplay = getShippingCostDisplayText(
+    orderTotals.isDigital,
+    orderTotals.shipping,
+    orderTotals.formatted.shipping
   );
 
   if (items.length === 0) {
@@ -97,7 +97,7 @@ export const OrderSummary: React.FC = () => {
 
         <Separator />
 
-        {/* Order Totals - Using centralized calculations */}
+        {/* Order Totals */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Subtotal</span>
@@ -105,7 +105,7 @@ export const OrderSummary: React.FC = () => {
               {orderTotals.formatted.subtotal}
             </span>
           </div>
-
+          {/* Shipping */}
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Shipping</span>
             <span className={`font-medium ${shippingDisplay.className}`}>
@@ -127,20 +127,16 @@ export const OrderSummary: React.FC = () => {
         </div>
 
         {/* Shipping/Delivery Info */}
-        <div
-          className={`${
-            orderTotals.isDigital
-              ? "bg-blue-50 border-blue-200"
-              : "bg-green-50 border-green-200"
-          } border rounded-md p-3`}
-        >
-          <p
-            className={`text-sm ${
-              orderTotals.isDigital ? "text-blue-700" : "text-green-700"
-            }`}
-          >
-            {freeShippingMessage}
-          </p>
+        {orderTotals.amountNeededForFreeShipping > 0 && (
+          <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+            {getFreeShippingMessage(orderTotals.amountNeededForFreeShipping)}
+          </div>
+        )}
+        {/* TODO: add better message for physical shipping time info */}
+        <div className="text-xs text-indigo-600 bg-indigo-50 p-2 rounded">
+          {orderTotals.isDigital
+            ? "Digital products will be delivered instantly to your email!"
+            : "Standard Shipping time is not consistent "}
         </div>
 
         {/* Order Type Summary */}

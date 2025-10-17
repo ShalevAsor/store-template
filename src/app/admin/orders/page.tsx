@@ -1,5 +1,4 @@
 // app/admin/orders/page.tsx
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import { OrdersSearchFilter } from "@/components/admin/orders/OrdersSearchFilter";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/Pagination";
@@ -69,9 +68,6 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <AdminHeader title="Orders" subtitle="Manage your store orders" />
-
       {/* Search and Filter */}
       <OrdersSearchFilter
         initialSearch={filters.search}

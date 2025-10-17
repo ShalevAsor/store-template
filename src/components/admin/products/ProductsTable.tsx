@@ -12,14 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductActionsDropdown } from "@/components/admin/products/ProductActionsDropdown";
 import Link from "next/link";
-import { SerializedProduct } from "@/types/product";
-import { formatPrice } from "@/utils/priceUtils";
+import { ProductWithImages } from "@/types/product";
 import { ImagePlaceholder } from "@/components/shared/ImagePlaceholder";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/images";
+import { formatDate } from "@/utils/dateUtils";
+import { getProductStatusBadge, getStockDisplay } from "@/utils/statusUtils";
+import { formatPrice } from "@/utils/currencyUtils";
 
 interface ProductsTableProps {
-  products: SerializedProduct[];
+  products: ProductWithImages[];
   onDeleteProduct: (id: string, name: string) => void;
 }
 
@@ -27,43 +29,6 @@ export function ProductsTable({
   products,
   onDeleteProduct,
 }: ProductsTableProps) {
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(new Date(date));
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "ACTIVE":
-        return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-      case "DRAFT":
-        return <Badge variant="secondary">Draft</Badge>;
-      case "ARCHIVED":
-        return <Badge variant="outline">Archived</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const getStockDisplay = (stock: number | null, isDigital: boolean) => {
-    if (isDigital) {
-      return <span className="text-blue-600 text-sm">Digital</span>;
-    }
-
-    if (stock === null) {
-      return <span className="text-green-600 text-sm">Unlimited</span>;
-    }
-
-    if (stock === 0) {
-      return <span className="text-red-600 text-sm">Out of stock</span>;
-    }
-
-    return <span className="text-gray-900 text-sm">{stock} in stock</span>;
-  };
-
   if (products.length === 0) {
     return (
       <div className="text-center py-12">
@@ -160,7 +125,7 @@ export function ProductsTable({
                 )}
               </TableCell>
 
-              <TableCell>{getStatusBadge(product.status)}</TableCell>
+              <TableCell>{getProductStatusBadge(product.status)}</TableCell>
 
               <TableCell>
                 <Badge variant={product.isDigital ? "secondary" : "default"}>

@@ -218,6 +218,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           </Label>
           <Input
             id="name"
+            autoComplete="off"
             {...register("name")}
             placeholder="Enter product name"
             disabled={isFormSubmitting}
@@ -231,6 +232,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           <Label htmlFor="description">Description</Label>
           <Textarea
             id="description"
+            autoComplete="off"
             {...register("description")}
             placeholder="Describe your product..."
             rows={4}
@@ -246,6 +248,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             <Label htmlFor="sku">SKU</Label>
             <Input
               id="sku"
+              autoComplete="off"
               {...register("sku")}
               placeholder="Product SKU"
               disabled={isFormSubmitting}
@@ -259,6 +262,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             <Label htmlFor="category">Category</Label>
             <Input
               id="category"
+              autoComplete="off"
               {...register("category")}
               placeholder="Product category"
               disabled={isFormSubmitting}
@@ -288,10 +292,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 min="0.01"
                 {...register("price", { valueAsNumber: true })}
                 placeholder="0.00"
+                autoComplete="off"
                 className="pl-8"
                 disabled={isFormSubmitting}
               />
             </div>
+            {/* Price is entered in dollars and automatically converted to cents for storage */}
             {errors.price && (
               <p className="text-sm text-red-600">{errors.price.message}</p>
             )}
@@ -308,6 +314,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 type="number"
                 step="0.01"
                 min="0"
+                autoComplete="off"
                 {...register("compareAtPrice", {
                   setValueAs: (value) => {
                     if (value === "" || value === null || value === undefined)
@@ -362,6 +369,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               id="stock"
               type="number"
               min="0"
+              autoComplete="off"
               {...register("stock", {
                 setValueAs: (value) => {
                   if (value === "" || value === null || value === undefined)

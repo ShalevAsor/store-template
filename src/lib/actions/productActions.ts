@@ -3,16 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ProductFormData, productFormSchema } from "@/schemas/productSchema";
-import { SerializedProduct } from "@/types/product";
-import { generateUniqueSlug, serializeProduct } from "@/utils/productUtils";
+import { generateUniqueSlug } from "@/utils/productUtils";
 import { getErrorMessage } from "@/utils/errorUtils";
 import { z } from "zod";
 import { deleteImagesFromS3 } from "@/services/s3";
+import { ProductWithImages } from "@/types/product";
+import { majorUnitToMinor } from "@/utils/currencyUtils";
 
 export interface ProductActionResult {
   success: boolean;
   error?: string;
-  data?: SerializedProduct;
+  data?: ProductWithImages;
   fieldErrors?: Record<string, string[]>;
 }
 
@@ -29,13 +30,18 @@ export async function createProduct(
 
     // Generate unique slug
     const slug = await generateUniqueSlug(validatedData.name);
-
+    // Covert prices from Dollars to cents
+    const priceInCents = majorUnitToMinor(productData.price);
+    const compareAtPriceInCents = productData.compareAtPrice
+      ? majorUnitToMinor(productData.compareAtPrice)
+      : null;
     // Create product with optional images
     const product = await prisma.product.create({
       data: {
         ...productData,
         slug,
-        compareAtPrice: validatedData.compareAtPrice ?? null,
+        price: priceInCents,
+        compareAtPrice: compareAtPriceInCents,
         stock: validatedData.stock ?? null,
         sku: validatedData.sku || undefined,
         images: images.length
@@ -58,7 +64,7 @@ export async function createProduct(
 
     return {
       success: true,
-      data: serializeProduct(product),
+      data: product,
     };
   } catch (error) {
     console.error("Error creating product:", error);
@@ -98,8 +104,14 @@ export async function updateProduct(
     const validatedData = productFormSchema.parse(data);
     const { images, ...updateData } = validatedData;
 
+    // Convert Prices from dollars to cents
+
     const finalUpdateData: Partial<ProductFormData> & { slug?: string } = {
       ...updateData,
+      price: majorUnitToMinor(updateData.price),
+      compareAtPrice: updateData.compareAtPrice
+        ? majorUnitToMinor(updateData.compareAtPrice)
+        : null,
     };
 
     // Regenerate slug if name changed
@@ -141,9 +153,6 @@ export async function updateProduct(
       where: { id },
       data: {
         ...finalUpdateData,
-        compareAtPrice: validatedData.compareAtPrice ?? null,
-        stock: validatedData.stock ?? null,
-        sku: validatedData.sku || undefined,
         images: {
           deleteMany: {}, // remove old images
           createMany: {
@@ -165,7 +174,7 @@ export async function updateProduct(
 
     return {
       success: true,
-      data: serializeProduct(product),
+      data: product,
     };
   } catch (error) {
     console.error("Error updating product:", error);

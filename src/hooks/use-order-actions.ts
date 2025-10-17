@@ -1,96 +1,151 @@
 "use client";
 
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { useModalStore } from "@/store/modalStore";
-// TODO: Import these when you create the order actions
-// import { cancelOrder, updateOrderStatus, processRefund } from "@/lib/actions/orderActions";
+import {
+  cancelOrder,
+  refundOrder,
+  updateOrderStatus,
+  updatePaymentStatus,
+} from "@/lib/actions/orderActions";
+import { OrderStatus, PaymentStatus } from "@prisma/client";
+import {
+  getAvailableOrderStatuses,
+  getAvailablePaymentStatuses,
+} from "@/utils/statusUtils";
 
 export function useOrderActions() {
   const { onOpen } = useModalStore();
+  const router = useRouter();
 
   const handleCancelOrder = (orderId: string, orderNumber: string) => {
     onOpen("confirmAction", {
       confirmAction: {
-        title: "Cancel Order",
-        description: `Are you sure you want to cancel order ${orderNumber}? This action cannot be undone.`,
-        confirmText: "Cancel Order",
+        title: "Cancel & Refund Order",
+        description: `Are you sure you want to cancel order ${orderNumber}? This will:\n\n• Refund the customer (if payment was captured)\n• Restock inventory\n• Send cancellation notification\n\nThis action cannot be undone.`,
+        confirmText: "Cancel & Refund Order",
         cancelText: "Keep Order",
         onConfirm: async () => {
-          try {
-            // TODO: Implement cancelOrder action
-            // const result = await cancelOrder(orderId);
-            // if (result.success) {
-            //   toast.success(`Order ${orderNumber} cancelled successfully`);
-            // } else {
-            //   toast.error(result.error || "Failed to cancel order");
-            //   throw new Error(result.error);
-            // }
-
-            // Mock success for now
-            toast.success(`Order ${orderNumber} cancelled successfully`);
-          } catch (error) {
-            console.error("Error cancelling order:", error);
-            toast.error("An error occurred while cancelling the order");
-            throw error; // Re-throw to keep modal open
+          const result = await cancelOrder(
+            orderId,
+            "Order cancelled by admin",
+            true
+          );
+          if (result.success) {
+            toast.success(
+              result.data?.message ||
+                `Order ${orderNumber} cancelled successfully`
+            );
+            router.refresh();
+          } else {
+            toast.error(result.error || "Failed to cancel order");
+            throw new Error(result.error);
           }
         },
       },
     });
   };
 
-  const handleUpdateStatus = async (
+  const handleChangeOrderStatus = (
     orderId: string,
     orderNumber: string,
-    newStatus: string
+    currentStatus: OrderStatus
   ) => {
-    try {
-      // TODO: Implement updateOrderStatus action
-      // const result = await updateOrderStatus(orderId, newStatus);
-      // if (result.success) {
-      //   toast.success(`Order ${orderNumber} status updated to ${newStatus}`);
-      // } else {
-      //   toast.error(result.error || "Failed to update order status");
-      // }
+    const availableStatuses = getAvailableOrderStatuses(currentStatus);
 
-      // Mock success for now
-      toast.success(`Order ${orderNumber} status updated to ${newStatus}`);
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      toast.error("An error occurred while updating the order status");
+    if (availableStatuses.length === 0) {
+      toast.info(`No status changes available for ${currentStatus} orders`);
+      return;
     }
+
+    onOpen("statusSelection", {
+      statusSelection: {
+        title: "Change Order Status",
+        currentStatus,
+        availableStatuses,
+        onConfirm: async (newStatus: OrderStatus | PaymentStatus) => {
+          const result = await updateOrderStatus(
+            orderId,
+            newStatus as OrderStatus
+          );
+          if (result.success) {
+            toast.success(
+              `Order ${orderNumber} status updated to ${newStatus}`
+            );
+          } else {
+            toast.error(result.error || "Failed to update order status");
+            throw new Error(result.error);
+          }
+        },
+      },
+    });
+  };
+
+  const handleChangePaymentStatus = (
+    orderId: string,
+    orderNumber: string,
+    currentStatus: PaymentStatus
+  ) => {
+    const availableStatuses = getAvailablePaymentStatuses(currentStatus);
+
+    if (availableStatuses.length === 0) {
+      toast.info(
+        `No payment status changes available for ${currentStatus} payments`
+      );
+      return;
+    }
+
+    onOpen("statusSelection", {
+      statusSelection: {
+        title: "Change Payment Status",
+        currentStatus,
+        availableStatuses,
+        onConfirm: async (newStatus: OrderStatus | PaymentStatus) => {
+          const result = await updatePaymentStatus(
+            orderId,
+            newStatus as PaymentStatus
+          );
+          if (result.success) {
+            toast.success(
+              `Payment status updated to ${newStatus} for order ${orderNumber}`
+            );
+          } else {
+            toast.error(result.error || "Failed to update payment status");
+            throw new Error(result.error);
+          }
+        },
+      },
+    });
   };
 
   const handleProcessRefund = (
     orderId: string,
     orderNumber: string,
-    amount: number
+    totalAmount: number,
+    alreadyRefunded: number = 0
   ) => {
-    onOpen("confirmAction", {
-      confirmAction: {
-        title: "Process Refund",
-        description: `Are you sure you want to process a refund of ${amount.toLocaleString(
-          "en-US",
-          { style: "currency", currency: "USD" }
-        )} for order ${orderNumber}?`,
-        confirmText: "Process Refund",
-        cancelText: "Cancel",
-        onConfirm: async () => {
-          try {
-            // TODO: Implement processRefund action
-            // const result = await processRefund(orderId, amount);
-            // if (result.success) {
-            //   toast.success(`Refund processed for order ${orderNumber}`);
-            // } else {
-            //   toast.error(result.error || "Failed to process refund");
-            //   throw new Error(result.error);
-            // }
-
-            // Mock success for now
-            toast.success(`Refund processed for order ${orderNumber}`);
-          } catch (error) {
-            console.error("Error processing refund:", error);
-            toast.error("An error occurred while processing the refund");
-            throw error; // Re-throw to keep modal open
+    onOpen("refund", {
+      refund: {
+        orderNumber,
+        orderId,
+        totalAmount,
+        alreadyRefunded,
+        onConfirm: async (amount?: number, reason?: string) => {
+          const result = await refundOrder(
+            orderId,
+            amount,
+            reason || "Refund processed by admin"
+          );
+          if (result.success) {
+            toast.success(
+              result.data?.message ||
+                `Refund processed for order ${orderNumber}`
+            );
+            router.refresh();
+          } else {
+            toast.error(result.error || "Failed to process refund");
+            throw new Error(result.error);
           }
         },
       },
@@ -99,7 +154,8 @@ export function useOrderActions() {
 
   return {
     handleCancelOrder,
-    handleUpdateStatus,
+    handleChangeOrderStatus,
+    handleChangePaymentStatus,
     handleProcessRefund,
   };
 }

@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { getProductBySlug, getRelatedProducts } from "@/lib/products";
-import { AddToCartButton } from "@/components/product/AddToCartButton";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { Badge } from "@/components/shared/Badge";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { ProductImageGallery } from "@/components/product/ProductImageGallery";
-import { formatPriceWithDiscount, getStockDisplay } from "@/utils/priceUtils";
 import { getImageUrl } from "@/lib/images";
+import { getStockDisplay } from "@/utils/statusUtils";
+import { formatPrice } from "@/utils/currencyUtils";
 
 interface ProductPageProps {
   params: Promise<{
@@ -29,22 +30,17 @@ export async function generateMetadata({
   }
 
   const mainImage = product.images[0]?.imageKey;
-  // Use centralized price formatting for metadata
-  const priceDisplay = formatPriceWithDiscount(
-    product.price,
-    product.compareAtPrice
-  );
 
   return {
     title: `${product.name} | Your Store`,
     description:
       product.description ||
-      `Buy ${product.name} for ${priceDisplay.currentPrice}`,
+      `Buy ${product.name} for ${formatPrice(product.price)}`,
     openGraph: {
       title: product.name,
       description:
         product.description ||
-        `Buy ${product.name} for ${priceDisplay.currentPrice}`,
+        `Buy ${product.name} for ${formatPrice(product.price)}`,
       images: mainImage ? [{ url: getImageUrl(mainImage) }] : [],
     },
   };
@@ -62,12 +58,10 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  // Use centralized price formatting
-  const priceDisplay = formatPriceWithDiscount(
-    product.price,
-    product.compareAtPrice
-  );
-  const stockDisplay = getStockDisplay(product.stock, product.isDigital);
+  const savings =
+    product.compareAtPrice && product.compareAtPrice > product.price
+      ? formatPrice(product.compareAtPrice - product.price)
+      : undefined;
 
   const breadcrumbItems = [
     { label: "Products", href: "/products" },
@@ -99,7 +93,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
               {product.isDigital && product.category !== "Digital Products" && (
                 <Badge type="digital">Digital Product</Badge>
               )}
-              {priceDisplay.hasDiscount && <Badge type="sale">Sale</Badge>}
+              {savings && <Badge type="sale">Sale</Badge>}
             </div>
 
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
@@ -108,21 +102,21 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
             {/* Price Display */}
             <div className="mb-2">
-              {priceDisplay.hasDiscount ? (
+              {savings && product.compareAtPrice ? (
                 <div className="flex items-baseline gap-3">
                   <span className="text-3xl font-bold text-green-600">
-                    {priceDisplay.currentPrice}
+                    {formatPrice(product.price)}
                   </span>
                   <span className="text-xl text-gray-500 line-through">
-                    {priceDisplay.originalPrice}
+                    {formatPrice(product.compareAtPrice)}
                   </span>
                   <span className="text-sm bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                    Save {priceDisplay.savings}
+                    Save {savings}
                   </span>
                 </div>
               ) : (
                 <span className="text-3xl font-bold text-green-600">
-                  {priceDisplay.currentPrice}
+                  {formatPrice(product.price)}
                 </span>
               )}
             </div>
@@ -171,9 +165,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
               {!product.isDigital && (
                 <div className="flex justify-between">
                   <dt className="text-gray-600">Availability:</dt>
-                  <dd className={`font-medium ${stockDisplay.className}`}>
-                    {stockDisplay.text}
-                  </dd>
+                  <dd>{getStockDisplay(product.stock, product.isDigital)}</dd>
                 </div>
               )}
             </dl>

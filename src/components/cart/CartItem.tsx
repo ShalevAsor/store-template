@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatLineItemPrice } from "@/utils/priceUtils";
+import { formatLineItemPrice } from "@/utils/currencyUtils";
 
 interface CartItemProps {
   item: CartItem;
@@ -53,8 +53,8 @@ export const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
 
   return (
     <Card className="bg-white">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
+      <CardContent className="p-4 ">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 justify-center">
           {/* Product Image */}
           {item.image && (
             <div className="flex-shrink-0">
@@ -69,8 +69,8 @@ export const CartItemComponent: React.FC<CartItemProps> = ({ item }) => {
           )}
 
           {/* Product Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="flex-1 min-w-0 ">
+            <div className="flex items-center gap-2 mb-1 ">
               <h3 className="font-medium text-gray-900 truncate">
                 {item.name}
               </h3>

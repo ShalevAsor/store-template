@@ -3,11 +3,11 @@
 import { toast } from "sonner";
 import { ProductsTable } from "@/components/admin/products/ProductsTable";
 import { deleteProduct } from "@/lib/actions/productActions";
-import { SerializedProduct } from "@/types/product";
 import { useModalStore } from "@/store/modalStore";
+import { ProductWithImages } from "@/types/product";
 
 interface AdminProductsClientProps {
-  products: SerializedProduct[];
+  products: ProductWithImages[];
 }
 
 export function AdminProductsClient({ products }: AdminProductsClientProps) {

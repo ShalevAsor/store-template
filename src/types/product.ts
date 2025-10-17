@@ -8,19 +8,19 @@ export type ProductWithImages = Product & {
 
 export type ProductStatusFilter = ProductStatus | "all";
 
-// Serialized type for client components (Decimal to number)
-export type SerializedProduct = Omit<
-  ProductWithImages,
-  "price" | "compareAtPrice"
-> & {
-  price: number;
-  compareAtPrice: number | null;
-  images: ProductImage[];
-};
+// // Serialized type for client components (Decimal to number)
+// export type SerializedProduct = Omit<
+//   ProductWithImages,
+//   "price" | "compareAtPrice"
+// > & {
+//   price: number;
+//   compareAtPrice: number | null;
+//   images: ProductImage[];
+// };
 
 // Pagination result type
 export type ProductsPaginationResult = {
-  products: SerializedProduct[];
+  products: ProductWithImages[];
   pagination: PaginationMeta;
 };
 

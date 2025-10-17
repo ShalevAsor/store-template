@@ -1,7 +1,5 @@
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ProductsSearchFilter } from "@/components/admin/products/ProductsSearchFilter";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import Link from "next/link";
 import { getProductsWithPagination } from "@/lib/products";
 import { Pagination } from "@/components/shared/Pagination";
@@ -66,17 +64,6 @@ export default async function ProductsPage({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <AdminHeader title="Products" subtitle="Manage your store products" />
-        <Button asChild>
-          <Link href="/admin/products/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </Link>
-        </Button>
-      </div>
-
       {/* Search and Filter */}
       <ProductsSearchFilter
         initialSearch={filters.search}

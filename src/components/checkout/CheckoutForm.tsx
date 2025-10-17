@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -24,29 +23,26 @@ import {
 import { Loader2, CreditCard, Smartphone } from "lucide-react";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import {
-  createCheckoutFormSchema,
   type CheckoutFormData,
+  checkoutFormSchema,
 } from "@/schemas/checkoutSchema";
-import type { CheckoutResult } from "@/lib/actions/checkoutAction";
 import type { CartItem } from "@/types/cart";
 import { isDigitalOrder } from "@/utils/orderUtils";
 
 interface CheckoutFormProps {
-  onSubmit: (data: CheckoutFormData) => Promise<CheckoutResult>;
+  onSubmit: (data: CheckoutFormData) => Promise<void>; // Changed: no return value needed
   cartItems: CartItem[];
+  isLoading?: boolean;
 }
 
 export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   cartItems,
   onSubmit,
+  isLoading = false,
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState<string>("");
 
   const orderIsDigital = isDigitalOrder(cartItems);
-
-  // Create schema based on order type
-  const checkoutSchema = createCheckoutFormSchema(orderIsDigital);
 
   // Initialize React Hook Form
   const {
@@ -54,126 +50,113 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     handleSubmit,
     setValue,
     watch,
-    setError,
     clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormData>({
-    resolver: zodResolver(checkoutSchema),
-    mode: "onBlur", // Validate on blur for better UX
+    resolver: zodResolver(checkoutFormSchema),
+    mode: "onBlur",
     defaultValues: {
       customerName: "",
       customerEmail: "",
       customerPhone: "",
-      shippingAddress: "",
-      paymentMethod: "card",
+      paymentMethod: "paypal",
+      shippingAddress: orderIsDigital
+        ? undefined
+        : {
+            line1: "",
+            line2: "",
+            city: "",
+            state: "",
+            postalCode: "",
+            country: "US",
+          },
     },
   });
 
-  // Watch payment method to show dynamic content
+  // Watch payment method and country for dynamic content
   const selectedPaymentMethod = watch("paymentMethod");
+  const selectedCountry = watch("shippingAddress.country");
 
   const onFormSubmit = async (data: CheckoutFormData) => {
-    setIsLoading(true);
     setServerError("");
 
     try {
-      const result = await onSubmit(data);
-
-      if (!result.success) {
-        // Handle field-specific errors from server
-        if (result.fieldErrors) {
-          Object.entries(result.fieldErrors).forEach(([field, messages]) => {
-            setError(field as keyof CheckoutFormData, {
-              type: "server",
-              message: messages[0], // Take the first error message
-            });
-          });
-        }
-
-        // Handle general server errors
-        if (result.error) {
-          setServerError(result.error);
-        }
-      }
-      // Success case is handled by redirect in server action
+      await onSubmit(data); // Changed: just await the promise, no result handling
     } catch (error) {
       console.error("Form submission error:", error);
       setServerError("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleRetryServerError = () => {
-    setServerError("");
-  };
-
   const paymentMethods = [
-    { value: "card", label: "Credit/Debit Card", icon: CreditCard },
     { value: "paypal", label: "PayPal", icon: Smartphone },
-    { value: "stripe", label: "Stripe", icon: CreditCard },
-    { value: "bank_transfer", label: "Bank Transfer", icon: CreditCard },
-    { value: "wallet", label: "Digital Wallet", icon: Smartphone },
+    { value: "card", label: "Credit/Debit Card", icon: CreditCard },
   ];
 
   const getPaymentMethodInfo = (method: string) => {
     const messages = {
-      card: "Credit/Debit card payment will be processed securely.",
-      paypal: "You'll be redirected to PayPal to complete payment.",
-      stripe: "Secure payment processing via Stripe.",
-      bank_transfer:
-        "Bank transfer details will be provided after order confirmation.",
-      wallet: "Digital wallet payment (Apple Pay, Google Pay, etc.).",
+      paypal: "You'll be redirected to PayPal to complete payment securely.",
+      card: "Card payment coming soon. Please use PayPal for now.",
     };
     return messages[method as keyof typeof messages] || "";
   };
+
+  const countryOptions = [
+    { value: "US", label: "United States" },
+    { value: "IL", label: "Israel" },
+    { value: "CA", label: "Canada" },
+    { value: "GB", label: "United Kingdom" },
+    { value: "AU", label: "Australia" },
+    { value: "FR", label: "France" },
+    { value: "DE", label: "Germany" },
+    { value: "JP", label: "Japan" },
+  ];
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>
           {orderIsDigital
-            ? "Customer & Payment Information"
-            : "Shipping & Payment Information"}
+            ? "Customer Information"
+            : "Shipping & Customer Information"}
         </CardTitle>
         <CardDescription>
           {orderIsDigital
             ? "Complete your details to receive your digital products"
-            : "Please fill in your details to complete your order"}
+            : "Please fill in your shipping and contact details"}
         </CardDescription>
         {orderIsDigital && (
           <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-700">
-              📱 This order contains only digital products - no shipping
-              required!
+              📱 Digital products only - no shipping required!
             </p>
           </div>
         )}
       </CardHeader>
 
       <CardContent>
-        {/* Server Error Display */}
         {serverError && (
           <div className="mb-6">
             <ErrorMessage
               message={serverError}
               variant="error"
-              onRetry={handleRetryServerError}
-              onDismiss={handleRetryServerError}
+              onDismiss={() => setServerError("")}
             />
           </div>
         )}
 
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
-          {/* Customer Information */}
+          {/* Customer Information Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Customer Information
+              Contact Information
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customerName">Full Name *</Label>
+                <Label htmlFor="customerName">
+                  Full Name <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="customerName"
                   type="text"
@@ -207,7 +190,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
             </div>
 
             <div>
-              <Label htmlFor="customerEmail">Email Address *</Label>
+              <Label htmlFor="customerEmail">
+                Email Address <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="customerEmail"
                 type="email"
@@ -223,46 +208,163 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
               )}
               {orderIsDigital && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Digital products will be delivered to this email address
+                  Digital products will be sent to this email
                 </p>
               )}
             </div>
           </div>
 
-          {/* Shipping Information - Only show if not digital */}
+          {/* Shipping Address Section - Only for physical products */}
           {!orderIsDigital && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 Shipping Address
               </h3>
 
-              <div>
-                <Label htmlFor="shippingAddress">Complete Address *</Label>
-                <Textarea
-                  id="shippingAddress"
-                  placeholder="123 Main Street, Apt 4B&#10;New York, NY 10001&#10;United States"
-                  rows={4}
-                  className={errors.shippingAddress ? "border-red-500" : ""}
-                  disabled={isLoading}
-                  {...register("shippingAddress")}
-                />
-                {errors.shippingAddress && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.shippingAddress.message}
-                  </p>
-                )}
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label htmlFor="shippingAddress.line1">
+                    Street Address <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="shippingAddress.line1"
+                    type="text"
+                    placeholder="123 Main Street"
+                    className={
+                      errors.shippingAddress?.line1 ? "border-red-500" : ""
+                    }
+                    disabled={isLoading}
+                    {...register("shippingAddress.line1")}
+                  />
+                  {errors.shippingAddress?.line1 && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {errors.shippingAddress.line1.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="shippingAddress.line2">
+                    Apartment, suite, etc. (optional)
+                  </Label>
+                  <Input
+                    id="shippingAddress.line2"
+                    type="text"
+                    placeholder="Apt 4B"
+                    disabled={isLoading}
+                    {...register("shippingAddress.line2")}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="shippingAddress.city">
+                      City <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="shippingAddress.city"
+                      type="text"
+                      placeholder="New York"
+                      className={
+                        errors.shippingAddress?.city ? "border-red-500" : ""
+                      }
+                      disabled={isLoading}
+                      {...register("shippingAddress.city")}
+                    />
+                    {errors.shippingAddress?.city && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {errors.shippingAddress.city.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="shippingAddress.state">
+                      State / Province
+                    </Label>
+                    <Input
+                      id="shippingAddress.state"
+                      type="text"
+                      placeholder="NY"
+                      disabled={isLoading}
+                      {...register("shippingAddress.state")}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="shippingAddress.postalCode">
+                      Postal Code <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="shippingAddress.postalCode"
+                      type="text"
+                      placeholder="10001"
+                      className={
+                        errors.shippingAddress?.postalCode
+                          ? "border-red-500"
+                          : ""
+                      }
+                      disabled={isLoading}
+                      {...register("shippingAddress.postalCode")}
+                    />
+                    {errors.shippingAddress?.postalCode && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {errors.shippingAddress.postalCode.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="shippingAddress.country">
+                      Country <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={selectedCountry || "US"}
+                      onValueChange={(value) =>
+                        setValue("shippingAddress.country", value)
+                      }
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger
+                        className={
+                          errors.shippingAddress?.country
+                            ? "border-red-500"
+                            : ""
+                        }
+                      >
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {countryOptions.map((country) => (
+                          <SelectItem key={country.value} value={country.value}>
+                            {country.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.shippingAddress?.country && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {errors.shippingAddress.country.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Payment Method */}
+          {/* Payment Method Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Payment Method
             </h3>
 
             <div>
-              <Label>Select Payment Method *</Label>
+              <Label>
+                Select Payment Method <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={selectedPaymentMethod}
                 onValueChange={(value) => {
@@ -302,7 +404,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 </p>
               )}
 
-              {/* Payment method info */}
               {selectedPaymentMethod && (
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
                   <p className="text-sm text-blue-700">
@@ -323,12 +424,10 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
             {isLoading || isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Processing Order...
+                Creating Order...
               </>
-            ) : orderIsDigital ? (
-              "Complete Purchase"
             ) : (
-              "Complete Order"
+              "Continue to Payment"
             )}
           </Button>
         </form>

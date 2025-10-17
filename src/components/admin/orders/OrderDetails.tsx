@@ -1,11 +1,11 @@
-import { SerializedOrder } from "@/types/order";
+import { OrderWithItems } from "@/types/order";
 import { OrderOverviewCard } from "./OrderOverviewCard";
 import { CustomerInfoCard } from "./CustomerInfoCard";
 import { PaymentInfoCard } from "./PaymentInfoCard";
 import { OrderItemsCard } from "./OrderItemsCard";
 
 interface OrderDetailsProps {
-  order: SerializedOrder;
+  order: OrderWithItems;
 }
 
 export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {

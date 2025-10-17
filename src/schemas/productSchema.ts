@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ProductImage, ProductStatus } from "@prisma/client";
-import { SerializedProduct } from "@/types/product";
+import { ProductWithImages } from "@/types/product";
+import { minorToMajorUnit } from "@/utils/currencyUtils";
 
 /**
  * Product form validation schema
@@ -104,11 +105,11 @@ export const defaultProductValues: ProductFormData = {
   category: undefined,
 };
 
-// Helper function to convert SerializedProduct to form data
-export function productToFormData(product: SerializedProduct): ProductFormData {
+// Helper function to convert Product to form data
+export function productToFormData(product: ProductWithImages): ProductFormData {
   return {
     name: product.name,
-    price: product.price,
+    price: minorToMajorUnit(product.price),
     status: product.status,
     isDigital: product.isDigital,
     images:
@@ -118,7 +119,9 @@ export function productToFormData(product: SerializedProduct): ProductFormData {
         sortOrder: img.sortOrder || index,
       })) || [],
     description: product.description || undefined,
-    compareAtPrice: product.compareAtPrice,
+    compareAtPrice: product.compareAtPrice
+      ? minorToMajorUnit(product.compareAtPrice)
+      : null,
     stock: product.stock,
     sku: product.sku || undefined,
     category: product.category || undefined,

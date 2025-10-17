@@ -56,10 +56,7 @@ export default async function CheckoutSuccessPage({
         <OrderDetails order={order} />
 
         {/* Order Summary Sidebar */}
-        <OrderSummarySidebar
-          totalAmount={order.totalAmount}
-          isDigital={order.isDigital}
-        />
+        <OrderSummarySidebar order={order} />
       </div>
 
       {/* Next Steps */}

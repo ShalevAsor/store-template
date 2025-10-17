@@ -11,9 +11,9 @@ datasource db {
 model Product {
   id          String   @id @default(cuid())
   name        String
-  price       Decimal  @db.Decimal(10, 2)
+  price       Int     
   description String?
-  compareAtPrice Decimal?  @db.Decimal(10, 2) // original price for sale display
+  compareAtPrice Int?   // Original price for sale display (in cents)
   
   // Inventory
   stock       Int?    // null = unlimited, 0 = out of stock , number = available 
@@ -62,12 +62,30 @@ model Order {
   customerName    String
   customerEmail   String
   customerPhone   String?
-  shippingAddress String?     // Optional for digital products
-  paymentMethod   String      @default("card") // card, paypal, stripe, bank_transfer, wallet
+  // Shipping address for orders with non-digital items
+  shippingLine1     String?
+  shippingLine2     String?
+  shippingCity      String?
+  shippingState     String?
+  shippingPostalCode String?
+  shippingCountry   String?
+  paymentMethod   String      @default("paypal") // user-facing method
+  paymentProviderId String?     // technical provider ID (paypal, stripe, etc.)
   isDigital       Boolean     @default(false) // Track if order contains only digital products
-  totalAmount     Decimal     @db.Decimal(10, 2)
+  subtotal        Int         // Total price of al order items (item.price * item.quantity) for each item in this order (minor units)
+  shippingAmount  Int?        // shipping price in minor units
+  taxAmount       Int?        // tax amount in minor units 
+  paidAmount      Int?        // Amount actually paid/captured (minor units)
   status          OrderStatus @default(PENDING)
-  paymentStatus PaymentStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(CREATED)
+
+  paymentId       String?     // Provider's payment ID (PayPal order ID)
+  transactionId   String?     // Provider's transaction ID after capture
+  payerEmail      String?     // Email used for payment (might differ from customerEmail)
+  refundAmount    Int? // Track total refunded amount
+  refundedAt      DateTime?
+  refundId        String?
+  paidAt          DateTime?   // When payment was completed
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   
@@ -77,21 +95,36 @@ model Order {
   @@map("orders")
 }
 
-// New OrderItem model
 model OrderItem {
   id          String  @id @default(cuid())
   orderId     String
   productId   String
-  productName String  // Store product name at time of order
-  price       Decimal @db.Decimal(10, 2) // Store price at time of order
+  productName String  
+  price       Int
   quantity    Int
-  
-  
   // Relations
   order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   
   @@map("order_items")
 }
+
+model StoreSetting {
+  id         String @id @default(cuid())
+  key        String @unique 
+  value      String
+  type       SettingType
+  category   SettingCategory
+  description  String?
+  isRequired   Boolean     @default(false)
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  @@map("store_settings")
+}
+
+
+
+
 
 // Order status enum - more comprehensive workflow
 enum OrderStatus {
@@ -116,11 +149,38 @@ enum ProductStatus {
 }
 
 enum PaymentStatus {
-  PENDING    // Payment not yet processed
-  PROCESSING // Payment being processed
-  PAID       // Payment successful
-  FAILED     // Payment failed
-  REFUNDED   // Payment refunded
+  CREATED     // Payment created, awaiting user action
+  PENDING     // Payment initiated, processing
+  APPROVED    // User approved, ready to capture
+  COMPLETED   // Payment successfully captured
+  FAILED      // Payment failed
+  CANCELLED   // Payment cancelled by user
+  EXPIRED     // Payment session expired
+  REFUNDED    // Payment refunded
   
   @@map("payment_status")
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  IMAGE
+  EMAIL
+  URL
+  TEXT_AREA
+  
+  @@map("setting_type")
+}
+
+enum SettingCategory {
+  STORE_IDENTITY
+  OPERATIONAL
+  CONTENT
+  BUSINESS
+  EMAIL_TEMPLATES
+  APPEARANCE
+  
+  @@map("setting_category")
 }

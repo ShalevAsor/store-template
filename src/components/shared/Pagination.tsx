@@ -33,7 +33,7 @@ export const Pagination: React.FC<PaginationProps> = ({
     router.push(createPageUrl(page));
   };
 
-  // Calculate te range of items being shown
+  // Calculate range of items being shown
   const startItem = (currentPage - 1) * limit + 1;
   const endItem = Math.min(currentPage * limit, total);
   // Generate page numbers to show

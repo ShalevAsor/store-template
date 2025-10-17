@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { StockConfirmationModal } from "@/components/modals/StockConfirmationModal";
 import { ConfirmActionModal } from "../modals/ConfrimActionModal";
+import { RefundModal } from "../modals/RefundModal";
+import { StatusSelectionModal } from "../modals/StatusSelectionModal ";
 
 /**
  * ModalProvider Component
@@ -41,7 +43,8 @@ export const ModalProvider = () => {
     <>
       <StockConfirmationModal />
       <ConfirmActionModal />
-      {/* Future modals can be added here */}
+      <RefundModal />
+      <StatusSelectionModal />
     </>
   );
 };

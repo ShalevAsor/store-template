@@ -1,21 +1,15 @@
 import { CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { formatPrice } from "@/utils/priceUtils";
-import { calculateTax } from "@/utils/orderUtils";
+import { formatPrice } from "@/utils/currencyUtils";
+import { OrderWithItems } from "@/types/order";
 
 interface OrderSummarySidebarProps {
-  totalAmount: number;
-  isDigital: boolean;
+  order: OrderWithItems;
 }
 
 export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
-  totalAmount,
-  isDigital,
+  order,
 }) => {
-  // Use centralized tax calculation
-  const tax = calculateTax(totalAmount);
-  const total = totalAmount + tax;
-
   return (
     <div className="lg:col-span-1">
       <Card className="sticky top-8">
@@ -29,9 +23,16 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>{formatPrice(totalAmount)}</span>
+              <span>{formatPrice(order.subtotal)}</span>
             </div>
-            {!isDigital && (
+            {order.shippingAmount && order.shippingAmount > 0 ? (
+              <div className="flex justify-between">
+                <span>Shipping</span>
+                <span className="text-green-600">
+                  {formatPrice(order.shippingAmount)}
+                </span>
+              </div>
+            ) : (
               <div className="flex justify-between">
                 <span>Shipping</span>
                 <span className="text-green-600">Free</span>
@@ -39,12 +40,18 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
             )}
             <div className="flex justify-between">
               <span>Tax</span>
-              <span>{formatPrice(tax)}</span>
+              <span>{formatPrice(order.taxAmount || 0)}</span>
             </div>
             <div className="border-t pt-3">
               <div className="flex justify-between font-semibold text-base">
                 <span>Total</span>
-                <span>{formatPrice(total)}</span>
+                <span>
+                  {formatPrice(
+                    order.subtotal +
+                      (order.shippingAmount || 0) +
+                      (order.taxAmount || 0)
+                  )}
+                </span>
               </div>
             </div>
           </div>

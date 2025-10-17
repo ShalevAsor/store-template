@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ProductForm } from "@/components/admin/products/ProductForm";
 import {
@@ -20,7 +19,6 @@ export function EditProductClient({
   productId,
   initialData,
 }: EditProductClientProps) {
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (
@@ -34,7 +32,6 @@ export function EditProductClient({
 
       if (result.success && result.data) {
         toast.success("Product updated successfully!");
-        router.push("/admin/products");
       } else {
         // Show field-level errors
         if (result.fieldErrors) {
