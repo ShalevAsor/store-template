@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ProductWithImages, SerializedProduct } from "@/types/product";
+import { ProductWithImages } from "@/types/product";
 
 /**
  * Generate URL-friendly slug from product name
@@ -43,19 +43,3 @@ export async function generateUniqueSlug(
   }
 }
 
-/**
- * Serialize product data for client components
- * Converts Prisma Decimal fields to numbers
- */
-
-export function serializeProduct(
-  product: ProductWithImages
-): SerializedProduct {
-  return {
-    ...product,
-    price: Number(product.price),
-    compareAtPrice: product.compareAtPrice
-      ? Number(product.compareAtPrice)
-      : null,
-  };
-}
