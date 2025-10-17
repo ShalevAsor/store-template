@@ -12,7 +12,6 @@ import {
   getDefaultPagination,
   validatePaginationParams,
 } from "@/utils/paginationUtils";
-import { serializeProduct } from "@/utils/productUtils";
 import { Prisma } from "@prisma/client";
 
 // ==================== QUERY FUNCTIONS ====================
