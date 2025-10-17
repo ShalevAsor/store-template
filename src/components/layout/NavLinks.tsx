@@ -10,6 +10,7 @@ export const NavLinks = ({ className }: { className?: string }) => {
   const links = [
     { href: "/", label: "Home" },
     { href: "/products", label: "Products" },
+    { href: "/admin", label: "Admin" },
   ];
 
   return (

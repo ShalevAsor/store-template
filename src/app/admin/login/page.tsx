@@ -16,7 +16,7 @@ import { Loader2, Shield } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("123456");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
